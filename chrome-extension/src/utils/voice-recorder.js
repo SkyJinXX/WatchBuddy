@@ -97,13 +97,14 @@ class SmartVoiceRecorder {
 
             this.isRecording = false;
 
-            // 停止VAD
+            // 完全销毁VAD实例，释放麦克风权限
             if (this.vadInstance) {
-                this.vadInstance.pause();
+                this.vadInstance.destroy();
+                this.vadInstance = null;
             }
 
             this.updateStatus('录音已停止', 'info');
-            console.log('Voice: 录音已手动停止');
+            console.log('Voice: 录音已手动停止，麦克风权限已释放');
 
             return null; // 手动停止返回null
 
@@ -136,8 +137,11 @@ class SmartVoiceRecorder {
             
             this.isRecording = false;
             
+            // 完全销毁VAD实例，释放麦克风权限
             if (this.vadInstance) {
-                this.vadInstance.pause();
+                this.vadInstance.destroy();
+                this.vadInstance = null;
+                console.log('Voice: VAD实例已销毁，麦克风权限已释放');
             }
 
             console.log('Voice: 语音录制完成，音频长度:', vadAudio.length, '样本');
@@ -151,6 +155,13 @@ class SmartVoiceRecorder {
         } catch (error) {
             console.error('Voice: 处理语音结束失败:', error);
             this.updateStatus('处理录音失败: ' + error.message, 'error');
+            
+            // 即使出错也要释放麦克风
+            if (this.vadInstance) {
+                this.vadInstance.destroy();
+                this.vadInstance = null;
+            }
+            
             throw error;
         }
     }
@@ -240,13 +251,14 @@ class SmartVoiceRecorder {
      */
     destroy() {
         if (this.vadInstance) {
-            this.vadInstance.pause();
+            this.vadInstance.destroy();
             this.vadInstance = null;
+            console.log('Voice: VAD实例已销毁');
         }
         
         this.isRecording = false;
         this.audioChunks = [];
-        console.log('Voice: 资源已清理');
+        console.log('Voice: 资源已清理，麦克风权限已释放');
     }
 
     /**

@@ -10,7 +10,6 @@ class YouTubeVoiceAssistant {
         this.currentVideoId = null;
         this.subtitlesData = null;
         this.isProcessing = false;
-        this.conversationHistory = [];
         this.floatingButton = null;
         this.statusDisplay = null;
         
@@ -195,19 +194,11 @@ class YouTubeVoiceAssistant {
                 return;
             }
 
-            // 开始语音处理
+            // 开始语音处理（AI助手会自动管理多视频对话历史）
             const result = await this.aiAssistant.processVoiceQuerySmart(
                 context, 
                 (message, type) => this.updateStatus(message, type)
             );
-
-            // 记录对话历史
-            this.conversationHistory.push({
-                timestamp: Date.now(),
-                videoTime: context.currentTime,
-                question: result.userQuestion,
-                answer: result.aiResponse
-            });
 
             // 更新使用统计
             this.updateUsageStats();
@@ -243,51 +234,16 @@ class YouTubeVoiceAssistant {
         });
     }
 
+    /**
+     * 获取视频上下文信息
+     */
     async getVideoContext() {
         const videoId = this.getCurrentVideoId();
         const videoTitle = this.getVideoTitle();
         const currentTime = this.getCurrentTime();
-
-        if (!videoId) {
-            return null;
-        }
-
-        // 获取字幕数据
-        if (!this.subtitles || this.currentVideoId !== videoId) {
-            try {
-                this.updateStatus('加载字幕...', 'processing');
-                const result = await this.loadSubtitles(videoId);
-                this.currentVideoId = videoId;
-                this.subtitlesData = result.timestamps; // 使用正确的字幕数据
-            } catch (error) {
-                console.warn('字幕加载失败:', error);
-                // 即使没有字幕也可以继续
-            }
-        }
-
-        let relevantSubtitles = '暂无字幕';
-        let fullTranscript = '暂无字幕';
-
-        // 使用已加载的字幕数据
-        if (this.subtitles && this.subtitles.length > 0) {
-            relevantSubtitles = this.getCurrentSubtitleContext(currentTime, 10);
-            fullTranscript = this.getFullVideoTranscript();
-        } else if (this.fullTranscript) {
-            // 如果有完整转录但没有时间戳数据
-            fullTranscript = this.fullTranscript;
-            // 简单截取当前时间附近的内容作为相关字幕
-            const words = this.fullTranscript.split(' ');
-            const contextWords = Math.floor(currentTime / 2); // 假设每2秒一个词
-            const startIndex = Math.max(0, contextWords - 50);
-            const endIndex = Math.min(words.length, contextWords + 50);
-            relevantSubtitles = words.slice(startIndex, endIndex).join(' ');
-        }
-
-        console.log('Content: Video context with subtitles:');
-        console.log('  - Relevant subtitles length:', relevantSubtitles.length);
-        console.log('  - Full transcript length:', fullTranscript.length);
-        console.log('  - Current time:', currentTime);
-
+        const relevantSubtitles = this.getCurrentSubtitleContext(currentTime);
+        const fullTranscript = this.getFullVideoTranscript();
+        
         return {
             videoId: videoId,
             videoTitle: videoTitle,
@@ -469,7 +425,6 @@ class YouTubeVoiceAssistant {
         }
         this.subtitlesData = null;
         this.currentVideoId = null;
-        this.conversationHistory = [];
     }
 }
 
