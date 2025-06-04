@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Voice Assistant",
+  "version": "1.0.0",
+  "description": "AI语音助手，帮助理解YouTube视频内容。支持语音提问和智能回答。",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "background"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://youtube.com/*",
+    "https://api.openai.com/*",
+    "https://downsub.com/*",
+    "https://get-info.downsub.com/*",
+    "https://member.downsub.com/*",
+    "https://download.subtitle.to/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/watch*",
+        "https://youtube.com/watch*"
+      ],
+      "js": [
+        "src/utils/crypto-js.min.js",
+        "src/utils/subtitle-extractor.js",
+        "src/utils/openai-client.js",
+        "src/content.js"
+      ],
+      "css": ["src/styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "YouTube Voice Assistant"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/utils/*"],
+      "matches": ["https://www.youtube.com/*", "https://youtube.com/*"]
+    }
+  ]
+} 

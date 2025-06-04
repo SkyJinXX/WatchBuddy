@@ -1,0 +1,294 @@
+/**
+ * YouTube语音助手样式
+ * 浮动按钮和状态显示的CSS样式
+ */
+
+/* 浮动容器 */
+.yva-floating-container {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    z-index: 2147483647;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* 浮动按钮 */
+.yva-floating-button {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 
+        0 4px 20px rgba(102, 126, 234, 0.4),
+        0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.yva-floating-button:hover {
+    transform: scale(1.1);
+    box-shadow: 
+        0 6px 25px rgba(102, 126, 234, 0.5),
+        0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.yva-floating-button:active {
+    transform: scale(0.95);
+}
+
+.yva-floating-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* 麦克风图标 */
+.yva-mic-icon {
+    width: 24px;
+    height: 24px;
+    fill: white;
+    transition: all 0.3s ease;
+}
+
+/* 加载动画容器 */
+.yva-loading-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 加载动画 */
+.yva-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 2px solid white;
+    animation: yva-spin 1s linear infinite;
+}
+
+@keyframes yva-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 状态显示 */
+.yva-status-display {
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+    max-width: 200px;
+}
+
+/* 状态类型 */
+.yva-status-display.info {
+    background: rgba(102, 126, 234, 0.9);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+.yva-status-display.recording {
+    background: rgba(255, 59, 48, 0.9);
+    border-color: rgba(255, 59, 48, 0.3);
+    animation: yva-pulse 1.5s ease-in-out infinite;
+}
+
+.yva-status-display.processing {
+    background: rgba(255, 149, 0, 0.9);
+    border-color: rgba(255, 149, 0, 0.3);
+}
+
+.yva-status-display.playing {
+    background: rgba(52, 199, 89, 0.9);
+    border-color: rgba(52, 199, 89, 0.3);
+}
+
+.yva-status-display.success {
+    background: rgba(48, 209, 88, 0.9);
+    border-color: rgba(48, 209, 88, 0.3);
+}
+
+.yva-status-display.error {
+    background: rgba(255, 59, 48, 0.9);
+    border-color: rgba(255, 59, 48, 0.3);
+}
+
+/* 录音时的脉冲动画 */
+@keyframes yva-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
+/* 状态文本 */
+.yva-status-text {
+    display: inline-block;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .yva-floating-container {
+        right: 15px;
+        top: auto;
+        bottom: 20px;
+        transform: none;
+    }
+    
+    .yva-floating-button {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .yva-mic-icon {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .yva-status-display {
+        font-size: 12px;
+        padding: 6px 12px;
+        max-width: 150px;
+    }
+}
+
+/* 悬停时的提示箭头 */
+.yva-status-display::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    right: 20px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid rgba(0, 0, 0, 0.85);
+}
+
+.yva-status-display.info::after {
+    border-top-color: rgba(102, 126, 234, 0.9);
+}
+
+.yva-status-display.recording::after {
+    border-top-color: rgba(255, 59, 48, 0.9);
+}
+
+.yva-status-display.processing::after {
+    border-top-color: rgba(255, 149, 0, 0.9);
+}
+
+.yva-status-display.playing::after {
+    border-top-color: rgba(52, 199, 89, 0.9);
+}
+
+.yva-status-display.success::after {
+    border-top-color: rgba(48, 209, 88, 0.9);
+}
+
+.yva-status-display.error::after {
+    border-top-color: rgba(255, 59, 48, 0.9);
+}
+
+/* 平滑进入动画 */
+.yva-floating-container {
+    animation: yva-fadeInSlide 0.5s ease-out;
+}
+
+@keyframes yva-fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) translateX(100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
+    }
+}
+
+/* 状态显示的进入动画 */
+.yva-status-display {
+    animation: yva-slideIn 0.3s ease-out;
+}
+
+@keyframes yva-slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 防止与YouTube界面冲突 */
+.yva-floating-container,
+.yva-floating-container * {
+    box-sizing: border-box;
+    line-height: normal;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* 确保在YouTube Theater模式下也能正常显示 */
+.yva-floating-container {
+    pointer-events: auto;
+}
+
+.yva-floating-button {
+    pointer-events: auto;
+}
+
+/* 高对比度支持 */
+@media (prefers-contrast: high) {
+    .yva-floating-button {
+        border: 2px solid white;
+    }
+    
+    .yva-status-display {
+        border: 2px solid white;
+        background: rgba(0, 0, 0, 0.95);
+    }
+}
+
+/* 减少动画支持 */
+@media (prefers-reduced-motion: reduce) {
+    .yva-floating-button,
+    .yva-status-display,
+    .yva-floating-container {
+        animation: none;
+        transition: none;
+    }
+    
+    .yva-floating-button:hover {
+        transform: none;
+    }
+}
+
+/* 暗色主题适配 */
+@media (prefers-color-scheme: dark) {
+    .yva-status-display {
+        background: rgba(28, 28, 30, 0.9);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+} 

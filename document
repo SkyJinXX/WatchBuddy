@@ -1,0 +1,100 @@
+# YouTube语音助手 - Chrome扩展开发需求文档
+
+## 📋 项目背景和目标
+
+### 项目简介
+开发一个Chrome浏览器扩展，为YouTube学习者提供AI语音助手功能。用户在观看YouTube视频时，可以随时暂停并通过语音提问，AI会基于视频内容和上下文智能回答，帮助用户更好地理解学习内容。
+
+### 核心目标
+- **提升学习效率**: 遇到不懂内容时，立即获得语音解答
+- **保持学习流畅性**: 避免频繁查看字幕，保持对原声的专注
+- **智能上下文理解**: AI能够结合视频完整内容和当前时间点进行回答
+- **成本可控**: 采用三步API流水线，控制使用成本
+
+## 🎯 具体使用场景
+
+### 场景描述
+张同学正在观看一个英语技术教程视频：
+1. **播放到13分10秒**，前面2-3句话没听懂
+2. **暂停视频**，点击扩展的🎤按钮
+3. **语音提问**: "Can you repeat what he just said?"
+4. **AI智能回复**: 基于视频完整字幕 + 13:10时间戳附近内容 + 具体问题，用语音回答
+5. 比如："The speaker mentioned that the database design is a crucial part of the project. He explained that the database should be designed to meet the specific requirements of the project and to ensure that the data is stored and retrieved efficiently."
+6. 用户继续提问："What is the specific requirements?"
+7. **AI智能回复**: 基于上下文，继续语音回答
+5. **继续学习**: 理解后继续观看视频
+
+
+## 🛠️ 技术实现方案
+
+### 架构设计: 三步流水线方案
+```
+语音输入 → GPT-4o-mini转录 → GPT-4o-mini文字回复 → GPT-4o-mini语音合成 → 播放
+   |           |           |           |           |
+   0s       1-2s        2-4s        4-6s        6s+
+```
+
+### 核心功能模块
+1. **YouTube页面注入** - Content Script
+2. **视频信息提取** - 标题、字幕、时间戳
+3. **语音录制处理** - Web Audio API
+4. **API调用管理** - 三步流水线
+5. **音频播放控制** - 回复语音播放
+6. **用户界面** - 悬浮按钮和状态显示
+
+
+
+
+
+## 📋 详细功能要求
+
+### 核心功能
+
+#### 1. 视频信息提取
+- [x] 检测YouTube视频页面加载
+- [x] 提取视频ID、标题、描述
+- [x] 获取完整字幕文本(使用第三方API或YouTube内部API)
+- [x] 解析字幕时间戳和内容对应关系
+
+#### 2. 语音交互界面  
+- [x] 在YouTube页面添加悬浮🎤按钮
+- [x] 按钮状态：待机/录音/处理/播放
+- [x] 状态指示：显示当前处理步骤
+- [x] 错误提示：API调用失败时的用户反馈
+
+#### 3. 语音录制和处理
+- [x] 请求麦克风权限
+- [x] 开始/停止录音控制
+- [x] 音频格式转换
+- [x] 录音时长控制(避免过长导致高成本)
+
+#### 4. 上下文智能处理
+- [x] 获取当前视频播放时间戳
+- [x] 提取时间戳之前N句相关字幕
+- [x] 构建包含完整视频信息的提示词
+- [x] 支持对话历史记录(同一视频内的多轮对话)
+
+#### 5. API调用流水线
+- [x] 步骤1：GPT-4o-mini语音转录
+- [x] 步骤2：GPT-4o-mini智能回复
+- [x] 步骤3：GPT-4o-mini语音合成
+- [x] 错误处理和重试机制
+
+---
+# 🎯 YouTube语音助手 - 最优API选择方案
+
+## 📊 推荐的三步API组合
+
+### ✅ 最优方案 (2024年最新)
+
+```
+🎤 语音输入 → gpt-4o-mini-transcribe → GPT-4o-mini → gpt-4o-mini-tts → 🔊 语音输出
+```
+## 📂 参考代码和项目
+reference-get-subtitle.js 获取字幕
+gpt-api-example.js gpt-4o-mini相关使用方法，再具体可以自己web搜索。
+
+---
+
+## 📞 联系方式
+如有技术问题或需要进一步澄清需求，请及时沟通。
