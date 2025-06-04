@@ -402,16 +402,6 @@ class SubtitleExtractor {
         return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds) + parseInt(milliseconds) / 1000;
     }
 
-    /**
-     * 根据时间戳获取相关字幕
-     */
-    getRelevantSubtitles(subtitles, currentTime, contextRange = 30) {
-        const relevant = subtitles.filter(sub => 
-            sub.start >= currentTime - contextRange && sub.start <= currentTime + contextRange
-        );
-        
-        return relevant.map(sub => sub.text).join(' ');
-    }
 
     /**
      * 解析XML格式字幕为时间戳数组 (YouTube timedtext格式)

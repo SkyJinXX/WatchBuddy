@@ -33,14 +33,6 @@ class OpenAIVoiceAssistant {
             this.clearAllConversations();
         });
 
-        // 也监听页面隐藏事件（用户切换标签页时）
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                console.log('OpenAI: 页面隐藏，保持对话历史');
-            } else {
-                console.log('OpenAI: 页面显示，恢复对话历史');
-            }
-        });
     }
 
     /**
@@ -132,6 +124,7 @@ class OpenAIVoiceAssistant {
 
     /**
      * 获取用于API调用的完整消息数组
+     * @deprecated 建议直接使用 getCurrentConversationHistory 和手动构建消息数组
      */
     getConversationMessages(systemMessage = null) {
         const messages = [];
@@ -476,35 +469,83 @@ class OpenAIVoiceAssistant {
     }
 
     /**
-     * 构建YouTube助手的对话消息（支持连续对话）
+     * 构建YouTube助手的对话消息（支持连续对话和OpenAI缓存优化）
      */
     buildYouTubeAssistantMessages(userQuestion, context) {
         // 检查是否为新视频
         this.switchToVideo(context.videoId);
 
-        // 构建系统消息（包含视频上下文信息）
-        const systemMessage = `你是YouTube视频助手，基于视频字幕内容回答问题。
+        // 构建固定的视频系统消息（不变部分，有利于OpenAI缓存）
+        const staticSystemMessage = `You are a YouTube video assistant that answers questions based on video subtitle content.
 
-视频：${context.videoTitle || '未知标题'}
-视频ID: ${context.videoId}
-当前时间：${Math.floor(context.currentTime)}秒
+Video: ${context.videoTitle || 'Unknown Title'}
+Video ID: ${context.videoId}
 
-当前字幕：
-${context.relevantSubtitles || '无相关字幕'}
+Full Transcript:
+${context.fullTranscript || 'Loading subtitles...'}
 
-完整字幕：
-${context.fullTranscript || '字幕加载中...'}
+Please provide concise answers (within 100 words), focusing on content relevant to the current time position.`;
 
-请简洁回答（100字以内），重点关注当前时间点的内容。如果用户问的是延续性问题，请结合之前的对话内容回答。`;
+        // 构建当前问题的动态上下文消息（每次查询时更新）
+        const currentDynamicContext = `Current video playback time: ${Math.floor(context.currentTime)} seconds
+
+Subtitle content around current time position:
+${context.relevantSubtitles || 'No relevant subtitles'}`;
 
         // 添加用户问题到对话历史
         this.addToConversationHistory('user', userQuestion);
 
-        // 获取包含历史对话的完整消息数组
-        const messages = this.getConversationMessages(systemMessage);
+        // 获取包含历史对话的完整消息数组，但不包含system消息
+        const conversationHistory = this.getCurrentConversationHistory();
+        
+        // 构建最终的消息数组：静态系统消息 + 历史对话穿插动态上下文
+        const messages = [
+            {
+                role: 'system',
+                content: staticSystemMessage
+            }
+        ];
 
-        console.log('OpenAI: 当前对话历史长度:', this.getCurrentConversationHistory().length);
-        console.log('OpenAI: 发送消息总数:', messages.length);
+        // 遍历对话历史，在每个用户问题前插入动态上下文
+        for (let i = 0; i < conversationHistory.length; i++) {
+            const msg = conversationHistory[i];
+            
+            if (msg.role === 'user') {
+                // 在用户问题前插入动态上下文
+                if (i === conversationHistory.length - 1) {
+                    // 最后一个用户问题（当前问题），使用当前的动态上下文
+                    messages.push({
+                        role: 'system',
+                        content: currentDynamicContext
+                    });
+                } else {
+                    // 历史用户问题，使用通用的历史上下文标记
+                    messages.push({
+                        role: 'system',
+                        content: `Historical conversation context - Round ${Math.floor(i/2) + 1}`
+                    });
+                }
+            }
+            
+            // 添加用户问题或助手回答
+            messages.push({
+                role: msg.role,
+                content: msg.content
+            });
+        }
+
+        console.log('OpenAI: 当前对话历史长度:', conversationHistory.length);
+        console.log('OpenAI: 发送消息总数:', messages.length, '(包含动态system消息)');
+        console.log('OpenAI: 静态system消息长度:', staticSystemMessage.length, '字符');
+        console.log('OpenAI: 当前动态上下文长度:', currentDynamicContext.length, '字符');
+        
+        // 输出完整的消息结构以便调试
+        console.log('OpenAI: 消息结构预览:');
+        messages.forEach((msg, index) => {
+            const preview = msg.content.length > 50 ? 
+                msg.content.substring(0, 50) + '...' : msg.content;
+            console.log(`  [${index}] ${msg.role}: ${preview}`);
+        });
 
         return messages;
     }

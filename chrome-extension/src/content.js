@@ -12,9 +12,15 @@ class YouTubeVoiceAssistant {
         this.isProcessing = false;
         this.floatingButton = null;
         this.statusDisplay = null;
+        this.manualSubtitle = null; // 手动上传的字幕数据
+        
+        // 配置选项
+        this.contextSentencesBefore = 5; // 当前时间点之前的句子数量（可配置）
         
         this.init();
     }
+
+
 
     async init() {
         // 等待页面加载完成
@@ -27,7 +33,7 @@ class YouTubeVoiceAssistant {
         // 监听页面导航
         this.observeNavigation();
         
-        // 监听来自background的消息
+        // 监听来自background和popup的消息
         this.setupMessageListener();
     }
 
@@ -49,8 +55,90 @@ class YouTubeVoiceAssistant {
                 case 'page_ready':
                     this.setup();
                     break;
+                case 'manual_subtitle_uploaded':
+                    this.handleManualSubtitleUploaded(request.videoId, request.subtitleData);
+                    break;
+                case 'manual_subtitle_cleared':
+                    this.handleManualSubtitleCleared(request.videoId);
+                    break;
             }
         });
+    }
+
+    /**
+     * 处理手动上传字幕
+     */
+    async handleManualSubtitleUploaded(videoId, subtitleData) {
+        console.log('Content: 接收到手动上传的字幕:', videoId, subtitleData);
+        
+        const currentVideoId = this.getCurrentVideoId();
+        if (currentVideoId === videoId) {
+            // 解析字幕内容
+            this.manualSubtitle = {
+                content: subtitleData.content,
+                transcript: this.parseSubtitleToTranscript(subtitleData.content),
+                timestamps: this.parseSubtitleToTimestamps(subtitleData.content),
+                language: 'Manual Upload'
+            };
+            
+            console.log('Content: 手动字幕解析完成:', this.manualSubtitle);
+            this.updateStatus('✅ 手动字幕已加载', 'success');
+        }
+    }
+
+    /**
+     * 处理字幕清除
+     */
+    handleManualSubtitleCleared(videoId) {
+        console.log('Content: 接收到字幕清除通知:', videoId);
+        
+        const currentVideoId = this.getCurrentVideoId();
+        if (currentVideoId === videoId) {
+            this.manualSubtitle = null;
+            this.updateStatus('字幕已清除', 'info');
+        }
+    }
+
+    /**
+     * 解析字幕为完整文本
+     */
+    parseSubtitleToTranscript(srtContent) {
+        try {
+            // 移除序号和时间戳，只保留文本内容
+            const lines = srtContent.split('\n');
+            let transcript = '';
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // 跳过空行、序号和时间戳
+                if (!line || 
+                    /^\d+$/.test(line) || 
+                    /\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3}/.test(line)) {
+                    continue;
+                }
+                
+                transcript += line + ' ';
+            }
+            
+            return transcript.trim();
+        } catch (error) {
+            console.error('解析字幕文本失败:', error);
+            return '';
+        }
+    }
+
+    /**
+     * 解析字幕为时间戳数组
+     */
+    parseSubtitleToTimestamps(srtContent) {
+        try {
+            const extractor = new SubtitleExtractor();
+            return extractor.parseSRTToTimestamps(srtContent);
+        } catch (error) {
+            console.error('解析字幕时间戳失败:', error);
+            return [];
+        }
     }
 
     /**
@@ -82,7 +170,7 @@ class YouTubeVoiceAssistant {
         // 监听视频变化
         this.observeVideoChanges();
 
-        // 预加载字幕
+        // 预加载字幕（优先检查手动上传的字幕）
         this.preloadSubtitles();
     }
 
@@ -194,14 +282,17 @@ class YouTubeVoiceAssistant {
                 return;
             }
 
+            // 检查是否有可用字幕
+            if (!context.fullTranscript) {
+                this.updateStatus('无字幕数据，请手动上传', 'error');
+                return;
+            }
+
             // 开始语音处理（AI助手会自动管理多视频对话历史）
             const result = await this.aiAssistant.processVoiceQuerySmart(
                 context, 
                 (message, type) => this.updateStatus(message, type)
             );
-
-            // 更新使用统计
-            this.updateUsageStats();
 
             console.log('对话完成:', result);
 
@@ -226,30 +317,53 @@ class YouTubeVoiceAssistant {
     }
 
     /**
-     * 更新使用统计
-     */
-    updateUsageStats() {
-        chrome.runtime.sendMessage({
-            action: 'update_usage_stats'
-        });
-    }
-
-    /**
      * 获取视频上下文信息
      */
     async getVideoContext() {
         const videoId = this.getCurrentVideoId();
         const videoTitle = this.getVideoTitle();
         const currentTime = this.getCurrentTime();
-        const relevantSubtitles = this.getCurrentSubtitleContext(currentTime);
-        const fullTranscript = this.getFullVideoTranscript();
         
+        // 优先使用手动上传的字幕，如果没有则使用API获取的字幕
+        let fullTranscript = '';
+        let relevantSubtitles = '';
+        
+        if (this.manualSubtitle) {
+            // 使用手动上传的字幕
+            fullTranscript = this.manualSubtitle.transcript;
+            relevantSubtitles = this.getCurrentSubtitleContextFromTimestamps(
+                this.manualSubtitle.timestamps, 
+                currentTime
+            );
+            console.log('Content: 使用手动上传的字幕');
+        } else if (this.subtitles && this.fullTranscript) {
+            // 使用API获取的字幕
+            fullTranscript = this.fullTranscript;
+            relevantSubtitles = this.getCurrentSubtitleContext(currentTime);
+            console.log('Content: 使用API获取的字幕');
+        } else {
+            console.log('Content: 无可用字幕，尝试加载...');
+            // 尝试加载字幕
+            await this.preloadSubtitles();
+            
+            if (this.manualSubtitle) {
+                fullTranscript = this.manualSubtitle.transcript;
+                relevantSubtitles = this.getCurrentSubtitleContextFromTimestamps(
+                    this.manualSubtitle.timestamps, 
+                    currentTime
+                );
+            } else if (this.subtitles && this.fullTranscript) {
+                fullTranscript = this.fullTranscript;
+                relevantSubtitles = this.getCurrentSubtitleContext(currentTime);
+            }
+        }
+
         return {
             videoId: videoId,
             videoTitle: videoTitle,
             currentTime: currentTime,
             relevantSubtitles: relevantSubtitles,
-            fullTranscript: fullTranscript // 发送完整转录，不截断
+            fullTranscript: fullTranscript
         };
     }
 
@@ -275,9 +389,26 @@ class YouTubeVoiceAssistant {
         if (videoId && videoId !== this.currentVideoId) {
             try {
                 console.log('Content: Preloading subtitles for video:', videoId);
-                const result = await this.loadSubtitles(videoId);
+                
+                // 首先检查是否有手动上传的字幕
+                const manualResult = await chrome.storage.local.get([`manual_subtitle_${videoId}`]);
+                const manualSubtitleData = manualResult[`manual_subtitle_${videoId}`];
+                
+                if (manualSubtitleData) {
+                    console.log('Content: 找到手动上传的字幕');
+                    this.handleManualSubtitleUploaded(videoId, manualSubtitleData);
+                } else {
+                    // 尝试使用API获取字幕
+                    try {
+                        const result = await this.loadSubtitles(videoId);
+                        console.log('Content: API字幕加载成功');
+                    } catch (error) {
+                        console.warn('Content: API字幕加载失败，需要手动上传字幕:', error);
+                        this.updateStatus('字幕获取失败，请手动上传', 'error');
+                    }
+                }
+                
                 this.currentVideoId = videoId;
-                console.log('Content: Subtitles preloaded successfully');
             } catch (error) {
                 console.warn('预加载字幕失败:', error);
             }
@@ -285,7 +416,7 @@ class YouTubeVoiceAssistant {
     }
 
     /**
-     * 加载字幕
+     * 加载字幕（API方式）
      */
     async loadSubtitles(videoId) {
         console.log('Content: loadSubtitles called with videoId:', videoId);
@@ -300,21 +431,18 @@ class YouTubeVoiceAssistant {
             // 解析字幕内容为完整文本
             const fullTranscript = extractor.getFullTranscriptFromContent(result.content);
             console.log(`Content: 字幕解析完成，总文本长度: ${fullTranscript.length} 字符`);
-            console.log(`Content: 字幕文本预览: ${fullTranscript.substring(0, 500)}...`);
             
             // 解析字幕为时间戳数组
             const subtitleTimestamps = extractor.parseXMLToTimestamps(result.content);
             console.log(`Content: 字幕时间戳解析完成，共 ${subtitleTimestamps.length} 条字幕`);
-            
+
             // 保存字幕数据
             this.subtitles = subtitleTimestamps;
             this.fullTranscript = fullTranscript;
             this.currentSubtitleLanguage = result.subtitle.name;
             
             console.log(`字幕加载成功: ${result.subtitle.name}, ${result.content.length} 字符`);
-            console.log(`完整转录文本: ${fullTranscript.length} 字符, ${subtitleTimestamps.length} 条时间戳`);
-            console.log(`字幕文本预览: ${fullTranscript}`);
-            
+
             // 通知background script字幕已准备就绪
             chrome.runtime.sendMessage({
                 action: 'subtitles_ready',
@@ -330,7 +458,7 @@ class YouTubeVoiceAssistant {
                 transcript: fullTranscript,
                 timestamps: subtitleTimestamps
             };
-            
+
         } catch (error) {
             console.error('字幕加载失败:', error);
             this.subtitles = null;
@@ -340,17 +468,17 @@ class YouTubeVoiceAssistant {
     }
 
     /**
-     * 根据当前视频时间获取相关字幕 - 只获取当前时间点之前的4-5句话
+     * 从时间戳数组获取相关字幕上下文
      */
-    getCurrentSubtitleContext(currentTime, contextRange = 10) {
-        if (!this.subtitles || this.subtitles.length === 0) {
+    getCurrentSubtitleContextFromTimestamps(timestamps, currentTime, contextRange = 10) {
+        if (!timestamps || timestamps.length === 0) {
             return '';
         }
         
         // 找到当前时间点最接近的字幕
         let currentIndex = -1;
-        for (let i = 0; i < this.subtitles.length; i++) {
-            if (this.subtitles[i].start <= currentTime && this.subtitles[i].end >= currentTime) {
+        for (let i = 0; i < timestamps.length; i++) {
+            if (timestamps[i].start <= currentTime && timestamps[i].end >= currentTime) {
                 currentIndex = i;
                 break;
             }
@@ -358,8 +486,8 @@ class YouTubeVoiceAssistant {
         
         // 如果没找到正在播放的字幕，找最近的之前的字幕
         if (currentIndex === -1) {
-            for (let i = 0; i < this.subtitles.length; i++) {
-                if (this.subtitles[i].start > currentTime) {
+            for (let i = 0; i < timestamps.length; i++) {
+                if (timestamps[i].start > currentTime) {
                     currentIndex = Math.max(0, i - 1);
                     break;
                 }
@@ -367,14 +495,14 @@ class YouTubeVoiceAssistant {
         }
         
         if (currentIndex === -1) {
-            currentIndex = this.subtitles.length - 1;
+            currentIndex = timestamps.length - 1;
         }
         
-        // 只获取当前时间点之前的4-5句（包括当前句）
-        const startIndex = Math.max(0, currentIndex - 4);
+        // 只获取当前时间点之前的N句（包括当前句）
+        const startIndex = Math.max(0, currentIndex - (this.contextSentencesBefore || 5));
         const endIndex = currentIndex;
         
-        const relevantSubs = this.subtitles.slice(startIndex, endIndex + 1);
+        const relevantSubs = timestamps.slice(startIndex, endIndex + 1);
         const context = relevantSubs.map(sub => sub.text).join(' ');
         
         console.log(`Content: Found ${relevantSubs.length} relevant subtitles BEFORE time ${currentTime}s (index ${currentIndex})`);
@@ -384,9 +512,26 @@ class YouTubeVoiceAssistant {
     }
 
     /**
+     * 根据当前视频时间获取相关字幕 - 获取当前时间点之前的N句话（可配置）
+     */
+    getCurrentSubtitleContext(currentTime, contextRange = 10) {
+        if (!this.subtitles || this.subtitles.length === 0) {
+            return '';
+        }
+        
+        return this.getCurrentSubtitleContextFromTimestamps(this.subtitles, currentTime, contextRange);
+    }
+
+    /**
      * 获取完整视频转录
      */
     getFullVideoTranscript() {
+        // 优先返回手动上传的字幕
+        if (this.manualSubtitle && this.manualSubtitle.transcript) {
+            return this.manualSubtitle.transcript;
+        }
+        
+        // 否则返回API获取的字幕
         return this.fullTranscript || '';
     }
 
@@ -424,6 +569,7 @@ class YouTubeVoiceAssistant {
             this.floatingButton = null;
         }
         this.subtitlesData = null;
+        this.manualSubtitle = null;
         this.currentVideoId = null;
     }
 }

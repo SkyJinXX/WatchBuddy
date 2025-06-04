@@ -14,11 +14,11 @@ async function initPopup() {
     // 加载已保存的API密钥
     await loadApiKey();
     
-    // 加载使用统计
-    await loadUsageStats();
-    
     // 检查当前页面
     await checkCurrentPage();
+    
+    // 加载当前视频字幕状态
+    await loadSubtitleStatus();
     
     // 绑定事件监听器
     bindEventListeners();
@@ -86,50 +86,185 @@ async function notifyContentScript() {
 }
 
 /**
- * 加载使用统计
+ * 加载当前视频字幕状态
  */
-async function loadUsageStats() {
+async function loadSubtitleStatus() {
     try {
-        const result = await chrome.storage.local.get(['usage_stats']);
-        const stats = result.usage_stats || { total: 0, today: 0, lastDate: null };
-        
-        // 检查是否是新的一天
-        const today = new Date().toDateString();
-        if (stats.lastDate !== today) {
-            stats.today = 0;
-            stats.lastDate = today;
-            await chrome.storage.local.set({ usage_stats: stats });
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab || !tab.url || !tab.url.includes('youtube.com/watch')) {
+            return;
         }
+
+        // 显示字幕管理部分
+        document.getElementById('subtitleSection').style.display = 'block';
+
+        // 获取当前视频ID
+        const urlParams = new URLSearchParams(tab.url.split('?')[1]);
+        const videoId = urlParams.get('v');
         
-        document.getElementById('totalQueries').textContent = stats.total;
-        document.getElementById('todayQueries').textContent = stats.today;
-        
+        if (videoId) {
+            // 检查是否有手动上传的字幕
+            const result = await chrome.storage.local.get([`manual_subtitle_${videoId}`]);
+            const manualSubtitle = result[`manual_subtitle_${videoId}`];
+            
+            const subtitleTextArea = document.getElementById('subtitleText');
+            
+            if (manualSubtitle) {
+                console.log('找到已保存的字幕，videoId:', videoId, '内容长度:', manualSubtitle.content.length);
+                updateSubtitleStatus('✅ 已加载手动上传的字幕', 'loaded');
+                // 只有在文本框为空时才自动填充，避免覆盖用户正在编辑的内容
+                if (!subtitleTextArea.value.trim()) {
+                    subtitleTextArea.value = manualSubtitle.content;
+                    console.log('已自动填充字幕内容到文本框');
+                } else {
+                    console.log('文本框不为空，跳过自动填充');
+                }
+            } else {
+                console.log('未找到已保存的字幕，videoId:', videoId);
+                updateSubtitleStatus('❌ 当前视频暂无可用字幕', 'empty');
+                // 不要自动清空文本框，用户可能正在输入或编辑
+            }
+        }
     } catch (error) {
-        console.error('加载使用统计失败:', error);
+        console.error('加载字幕状态失败:', error);
     }
 }
 
 /**
- * 清除使用统计
+ * 更新字幕状态显示
  */
-async function clearUsageStats() {
-    if (!confirm('确定要清除所有使用统计吗？')) {
+function updateSubtitleStatus(message, type) {
+    const statusElement = document.getElementById('subtitleStatus');
+    statusElement.textContent = message;
+    statusElement.className = `subtitle-status ${type}`;
+}
+
+/**
+ * 处理文件上传
+ */
+function handleFileUpload(file) {
+    if (!file || !file.name.toLowerCase().endsWith('.srt')) {
+        showStatus('请选择SRT格式的字幕文件', 'error');
         return;
     }
-    
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        document.getElementById('subtitleText').value = content;
+        document.getElementById('fileInputLabel').textContent = `📁 已选择: ${file.name}`;
+        showStatus('字幕文件读取成功，请点击"保存字幕"', 'success');
+    };
+    reader.readAsText(file);
+}
+
+/**
+ * 保存字幕
+ */
+async function saveSubtitle() {
     try {
-        const stats = { total: 0, today: 0, lastDate: new Date().toDateString() };
-        await chrome.storage.local.set({ usage_stats: stats });
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab || !tab.url || !tab.url.includes('youtube.com/watch')) {
+            showStatus('请在YouTube视频页面使用此功能', 'error');
+            return;
+        }
+
+        const urlParams = new URLSearchParams(tab.url.split('?')[1]);
+        const videoId = urlParams.get('v');
+        const subtitleContent = document.getElementById('subtitleText').value.trim();
+
+        if (!videoId) {
+            showStatus('无法获取视频ID', 'error');
+            return;
+        }
+
+        if (!subtitleContent) {
+            showStatus('请输入字幕内容', 'error');
+            return;
+        }
+
+        // 验证SRT格式
+        if (!isValidSRTFormat(subtitleContent)) {
+            showStatus('字幕格式不正确，请确保是SRT格式', 'error');
+            return;
+        }
+
+        // 保存到本地存储
+        const subtitleData = {
+            videoId: videoId,
+            content: subtitleContent,
+            timestamp: Date.now()
+        };
+
+        await chrome.storage.local.set({
+            [`manual_subtitle_${videoId}`]: subtitleData
+        });
+
+        // 通知content script字幕已更新
+        chrome.tabs.sendMessage(tab.id, {
+            action: 'manual_subtitle_uploaded',
+            videoId: videoId,
+            subtitleData: subtitleData
+        });
+
+        updateSubtitleStatus('✅ 字幕保存成功', 'loaded');
+        showStatus('字幕保存成功！可以开始语音对话了', 'success');
         
-        document.getElementById('totalQueries').textContent = '0';
-        document.getElementById('todayQueries').textContent = '0';
-        
-        showStatus('统计数据已清除', 'success');
-        
+        console.log('字幕保存成功，videoId:', videoId, '内容长度:', subtitleContent.length);
+
     } catch (error) {
-        console.error('清除统计失败:', error);
-        showStatus('清除失败: ' + error.message, 'error');
+        console.error('保存字幕失败:', error);
+        showStatus('保存字幕失败: ' + error.message, 'error');
     }
+}
+
+/**
+ * 清除字幕
+ */
+async function clearSubtitle() {
+    if (!confirm('确定要清除当前视频的字幕吗？')) {
+        return;
+    }
+
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab || !tab.url || !tab.url.includes('youtube.com/watch')) {
+            return;
+        }
+
+        const urlParams = new URLSearchParams(tab.url.split('?')[1]);
+        const videoId = urlParams.get('v');
+
+        if (videoId) {
+            // 从存储中删除
+            await chrome.storage.local.remove([`manual_subtitle_${videoId}`]);
+            
+            // 清空文本框
+            document.getElementById('subtitleText').value = '';
+            document.getElementById('fileInputLabel').textContent = '📁 点击选择SRT文件或拖拽到此处';
+            
+            // 通知content script字幕已清除
+            chrome.tabs.sendMessage(tab.id, {
+                action: 'manual_subtitle_cleared',
+                videoId: videoId
+            });
+
+            updateSubtitleStatus('❌ 当前视频暂无可用字幕', 'empty');
+            showStatus('字幕已清除', 'success');
+        }
+    } catch (error) {
+        console.error('清除字幕失败:', error);
+        showStatus('清除字幕失败: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 验证SRT格式
+ */
+function isValidSRTFormat(content) {
+    // 简单的SRT格式验证
+    const srtPattern = /^\d+\s+\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3}\s+.+/m;
+    return srtPattern.test(content);
 }
 
 /**
@@ -247,9 +382,16 @@ function openHelp() {
 🚀 使用步骤：
 1. 配置OpenAI API密钥（必须）
 2. 打开任意YouTube视频页面
-3. 点击右侧浮动的🎤按钮
-4. 说出您的问题（5秒录音时间）
-5. AI会自动回答并播放语音
+3. 如果自动获取字幕失败，可手动上传SRT字幕文件
+4. 点击右侧浮动的🎤按钮
+5. 说出您的问题（智能语音检测）
+6. AI会自动回答并播放语音
+
+📝 字幕功能：
+• 扩展会自动尝试获取视频字幕
+• 如果失败，可从 downsub.com 下载SRT文件手动上传
+• 支持直接编辑字幕文本
+• 每个视频的字幕会单独保存
 
 💡 使用技巧：
 • 问题要简洁明了，如："刚才说了什么？"
@@ -286,14 +428,51 @@ function bindEventListeners() {
     // 密码显示/隐藏按钮
     document.getElementById('togglePasswordBtn').addEventListener('click', togglePassword);
     
-    // 清除统计按钮
-    document.getElementById('clearStatsBtn').addEventListener('click', clearUsageStats);
-    
     // 测试连接按钮
     document.getElementById('testBtn').addEventListener('click', testConnection);
     
     // 帮助按钮
     document.getElementById('helpBtn').addEventListener('click', openHelp);
+    
+    // 字幕相关按钮
+    document.getElementById('saveSubtitleBtn').addEventListener('click', saveSubtitle);
+    document.getElementById('clearSubtitleBtn').addEventListener('click', clearSubtitle);
+    
+    // 文件上传
+    const fileInput = document.getElementById('subtitleFile');
+    const fileLabel = document.getElementById('fileInputLabel');
+    
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            handleFileUpload(e.target.files[0]);
+        }
+    });
+    
+    // 监听文本框输入，提示用户保存
+    const subtitleTextArea = document.getElementById('subtitleText');
+    subtitleTextArea.addEventListener('input', function() {
+        if (this.value.trim()) {
+            updateSubtitleStatus('⚠️ 字幕内容已修改，请点击保存', 'empty');
+        }
+    });
+    
+    // 拖拽上传
+    fileLabel.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.currentTarget.classList.add('dragover');
+    });
+    
+    fileLabel.addEventListener('dragleave', function(e) {
+        e.currentTarget.classList.remove('dragover');
+    });
+    
+    fileLabel.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            handleFileUpload(e.dataTransfer.files[0]);
+        }
+    });
     
     // API密钥输入框回车键
     document.getElementById('apiKey').addEventListener('keypress', function(e) {
@@ -302,13 +481,6 @@ function bindEventListeners() {
         }
     });
 }
-
-// 监听来自content script的消息
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'update_usage_stats') {
-        loadUsageStats();
-    }
-});
 
 // 等待DOM加载完成后绑定其他事件监听器
 document.addEventListener('DOMContentLoaded', function() {
@@ -326,6 +498,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // 定期更新当前页面状态
-    setInterval(checkCurrentPage, 2000);
+    // 定期更新当前页面状态 (降低频率避免干扰用户编辑)
+    setInterval(() => {
+        checkCurrentPage();
+        // 只在用户未专注于文本框时更新字幕状态
+        const subtitleTextArea = document.getElementById('subtitleText');
+        if (subtitleTextArea && document.activeElement !== subtitleTextArea) {
+            loadSubtitleStatus();
+        }
+    }, 5000);
 }); 

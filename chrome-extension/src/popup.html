@@ -76,16 +76,22 @@
             color: #666;
         }
 
-        .input-group input {
+        .input-group input, .input-group textarea {
             width: 100%;
             padding: 10px 12px;
             border: 2px solid #e1e5e9;
             border-radius: 8px;
             font-size: 13px;
             transition: border-color 0.3s;
+            font-family: inherit;
         }
 
-        .input-group input:focus {
+        .input-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .input-group input:focus, .input-group textarea:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -129,6 +135,16 @@
             border-color: #dee2e6;
         }
 
+        .btn-danger {
+            background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
         .status {
             padding: 10px 12px;
             border-radius: 8px;
@@ -158,32 +174,6 @@
             height: 1px;
             background: #e1e5e9;
             margin: 20px 0;
-        }
-
-        .usage-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .stat-item {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 16px;
-            font-weight: 600;
-            color: #667eea;
-        }
-
-        .stat-label {
-            font-size: 11px;
-            color: #666;
-            margin-top: 2px;
         }
 
         .help-text {
@@ -237,6 +227,59 @@
             color: #666;
             word-break: break-all;
         }
+
+        .subtitle-status {
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle-status.loaded {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .subtitle-status.empty {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 10px 16px;
+            background: #f8f9fa;
+            border: 2px dashed #e1e5e9;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .file-input-label:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .file-input-label.dragover {
+            border-color: #667eea;
+            background: #e6f3ff;
+        }
     </style>
 </head>
 <body>
@@ -274,20 +317,42 @@
 
             <div class="divider"></div>
 
-            <!-- 使用状态 -->
-            <div class="section">
-                <h3>📊 使用统计</h3>
-                <div class="usage-stats">
-                    <div class="stat-item">
-                        <div class="stat-value" id="totalQueries">0</div>
-                        <div class="stat-label">总提问次数</div>
+            <!-- 字幕管理 -->
+            <div class="section" id="subtitleSection" style="display: none;">
+                <h3>📝 字幕管理</h3>
+                
+                <!-- 字幕状态显示 -->
+                <div id="subtitleStatus" class="subtitle-status empty">
+                    ❌ 当前视频暂无可用字幕
+                </div>
+
+                <!-- 手动上传字幕 -->
+                <div class="input-group">
+                    <label>手动上传SRT字幕文件</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="subtitleFile" accept=".srt" />
+                        <label for="subtitleFile" class="file-input-label" id="fileInputLabel">
+                            📁 点击选择SRT文件或拖拽到此处
+                        </label>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="todayQueries">0</div>
-                        <div class="stat-label">今日提问</div>
+                    <div class="help-text">
+                        如果自动获取字幕失败，可以手动从 <a href="https://downsub.com" target="_blank">downsub.com</a> 下载SRT字幕文件并上传
                     </div>
                 </div>
-                <button class="btn btn-secondary" id="clearStatsBtn" style="margin-top: 10px;">清除统计</button>
+
+                <!-- 字幕文本预览/编辑 -->
+                <div class="input-group">
+                    <label for="subtitleText">字幕文本预览/编辑</label>
+                    <textarea id="subtitleText" placeholder="SRT字幕内容将显示在这里，您也可以直接粘贴字幕文本..." rows="6"></textarea>
+                    <div class="help-text">
+                        可以直接编辑字幕文本或粘贴从其他来源获取的SRT格式字幕
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-success" id="saveSubtitleBtn" style="flex: 1;">保存字幕</button>
+                    <button class="btn btn-danger" id="clearSubtitleBtn" style="flex: 1;">清除字幕</button>
+                </div>
             </div>
 
             <div class="divider"></div>

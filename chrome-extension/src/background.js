@@ -22,15 +22,6 @@ chrome.runtime.onInstalled.addListener((details) => {
             firstInstall: Date.now()
         });
         
-        // 初始化使用统计
-        chrome.storage.local.set({
-            usage_stats: {
-                total: 0,
-                today: 0,
-                lastDate: new Date().toDateString()
-            }
-        });
-        
         // 打开欢迎页面
         chrome.tabs.create({
             url: chrome.runtime.getURL('welcome.html')
@@ -66,8 +57,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (request.action === 'chat_with_openai') {
         chatWithOpenAI(request.messages, request.videoContext, sendResponse);
         return true;
-    } else if (request.action === 'update_usage_stats') {
-        updateUsageStats();
     } else if (request.action === 'get_api_key') {
         getApiKey(sendResponse);
     } else if (request.action === 'log_error') {
@@ -78,35 +67,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.log('未知消息类型:', request.action);
     }
 });
-
-/**
- * 更新使用统计
- */
-async function updateUsageStats() {
-    try {
-        const result = await chrome.storage.local.get(['usage_stats']);
-        const stats = result.usage_stats || { total: 0, today: 0, lastDate: null };
-        
-        // 检查是否是新的一天
-        const today = new Date().toDateString();
-        if (stats.lastDate !== today) {
-            stats.today = 0;
-            stats.lastDate = today;
-        }
-        
-        // 增加计数
-        stats.total += 1;
-        stats.today += 1;
-        
-        // 保存统计
-        await chrome.storage.local.set({ usage_stats: stats });
-        
-        console.log('使用统计已更新:', stats);
-        
-    } catch (error) {
-        console.error('更新使用统计失败:', error);
-    }
-}
 
 /**
  * 获取API密钥
@@ -200,24 +160,30 @@ chrome.runtime.onStartup.addListener(() => {
  */
 async function cleanupStorage() {
     try {
-        // 清理7天前的对话历史
-        const result = await chrome.storage.local.get(['conversation_history']);
-        if (result.conversation_history) {
-            const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-            const filteredHistory = result.conversation_history.filter(
-                item => item.timestamp > sevenDaysAgo
-            );
-            
-            if (filteredHistory.length !== result.conversation_history.length) {
-                await chrome.storage.local.set({
-                    conversation_history: filteredHistory
-                });
-                console.log('已清理过期的对话历史');
+        console.log('开始清理存储数据...');
+        
+        // 清理过期的对话历史（7天前）
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        const allData = await chrome.storage.local.get(null);
+        
+        const keysToRemove = [];
+        for (const key in allData) {
+            if (key.startsWith('conversation_') && allData[key].timestamp < sevenDaysAgo) {
+                keysToRemove.push(key);
+            }
+            // 清理旧版本的手动字幕（30天前）
+            if (key.startsWith('manual_subtitle_') && allData[key].timestamp < (Date.now() - 30 * 24 * 60 * 60 * 1000)) {
+                keysToRemove.push(key);
             }
         }
         
+        if (keysToRemove.length > 0) {
+            await chrome.storage.local.remove(keysToRemove);
+            console.log(`清理了 ${keysToRemove.length} 个过期存储项`);
+        }
+        
     } catch (error) {
-        console.error('清理存储失败:', error);
+        console.error('清理存储数据失败:', error);
     }
 }
 
@@ -516,6 +482,19 @@ async function chatWithOpenAI(messages, videoContext, sendResponse) {
             success: false, 
             error: error.message 
         });
+    }
+}
+
+/**
+ * 获取存储的API密钥
+ */
+async function getStoredApiKey() {
+    try {
+        const result = await chrome.storage.sync.get(['openai_api_key']);
+        return result.openai_api_key;
+    } catch (error) {
+        console.error('获取API密钥失败:', error);
+        return null;
     }
 }
 
