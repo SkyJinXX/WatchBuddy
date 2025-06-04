@@ -19,18 +19,18 @@
   ],
   "content_scripts": [
     {
-      "matches": [
-        "https://www.youtube.com/watch*",
-        "https://youtube.com/watch*"
-      ],
+      "matches": ["*://www.youtube.com/*"],
       "js": [
+        "src/utils/ort.js",
+        "src/utils/vad-web.js",
         "src/utils/crypto-js.min.js",
         "src/utils/subtitle-extractor.js",
+        "src/utils/voice-recorder.js",
         "src/utils/openai-client.js",
         "src/content.js"
       ],
       "css": ["src/styles.css"],
-      "run_at": "document_idle"
+      "run_at": "document_end"
     }
   ],
   "background": {

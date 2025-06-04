@@ -1,0 +1,188 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Technical Implementation Details
+
+## Encryption System for Subtitle API
+
+### Core Algorithm (implemented in [subtitle-extractor.js](mdc:chrome-extension/src/utils/subtitle-extractor.js))
+The subtitle extraction uses AES-256-CBC encryption to communicate with downsub.com API:
+
+```javascript
+// Key generation: SHA-256 hash of password + salt
+const key = CryptoJS.SHA256(password + salt)
+
+// Encryption: AES-256-CBC with random IV
+const encrypted = CryptoJS.AES.encrypt(payload, key, {
+    iv: iv,
+    padding: CryptoJS.pad.Pkcs7,
+    mode: CryptoJS.mode.CBC
+})
+
+// Result format: Base64 JSON with ct, iv, s fields
+{
+    "ct": "encrypted_content_base64",
+    "iv": "initialization_vector_hex",
+    "s": "salt_hex"
+}
+```
+
+### API Communication Pattern
+1. Generate encrypted video ID using `_encode()` method
+2. Make GET request to `https://get-info.downsub.com/{encrypted_id}`
+3. Use specific headers including `origin: https://member.downsub.com`
+4. Parse response to get subtitle URLs and metadata
+
+## Voice Activity Detection (VAD) System
+
+### Implementation in [voice-recorder.js](mdc:chrome-extension/src/utils/voice-recorder.js)
+Uses @ricky0123/vad-web with ONNX Runtime for neural network-based speech detection:
+
+```javascript
+// VAD Configuration
+const vadOptions = {
+    positiveSpeechThreshold: 0.5,    // Speech detection sensitivity
+    negativeSpeechThreshold: 0.35,   // Silence detection sensitivity
+    minSpeechFrames: 3,              // Minimum frames for speech
+    redemptionFrames: 8,             // Prevent false negatives
+    submitUserSpeechOnPause: false   // Don't auto-submit on pause
+}
+```
+
+### Audio Processing Pipeline
+1. **Microphone Access**: Request user media with audio constraints
+2. **VAD Processing**: Real-time speech/silence detection
+3. **Audio Recording**: Capture during speech periods
+4. **Format Conversion**: Convert to WAV format for API compatibility
+5. **Fallback Mechanism**: Switch to 5-second recording if VAD fails
+
+## Message Passing Architecture
+
+### Content Script ↔ Background Communication
+Implemented across [content.js](mdc:chrome-extension/src/content.js) and [background.js](mdc:chrome-extension/src/background.js):
+
+```javascript
+// Content Script sending message
+chrome.runtime.sendMessage({
+    action: 'fetch_subtitles',
+    url: apiUrl,
+    headers: headerObject
+}, (response) => {
+    if (response.success) {
+        // Handle success
+    } else {
+        // Handle error
+    }
+})
+
+// Background Script handling
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'fetch_subtitles') {
+        fetchSubtitles(request.url, request.headers, sendResponse)
+        return true // Keep message channel open for async response
+    }
+})
+```
+
+### Supported Message Types
+- `fetch_subtitles`: CORS proxy for subtitle API
+- `download_subtitle_content`: Download subtitle files
+- `transcribe_audio`: Audio transcription (future feature)
+- `chat_with_openai`: AI conversation
+- `subtitles_ready`: Store subtitle data
+- `update_usage_stats`: Track usage
+
+## OpenAI Integration
+
+### Context Management Strategy (in [openai-client.js](mdc:chrome-extension/src/utils/openai-client.js))
+```javascript
+// System prompt construction
+let systemPrompt = `You are a helpful YouTube video assistant...`
+
+// Add full transcript (no character limits)
+if (currentVideoSubtitles.transcript) {
+    systemPrompt += `\n\nVideo Transcript:\n${currentVideoSubtitles.transcript}`
+}
+
+// Add current position context (4-5 sentences before current time)
+if (videoContext?.currentTime) {
+    const relevantSubtitles = getRelevantSubtitlesAtTime(currentTime)
+    systemPrompt += `\n\nCurrent position: "${relevantSubtitles}"`
+}
+```
+
+### Dual Recording Strategy
+1. **Primary**: VAD-based smart recording (`processVoiceQuerySmart`)
+2. **Fallback**: Traditional 5-second recording (`processVoiceQuery`)
+3. **Error Handling**: Graceful degradation with user notification
+
+## Data Storage Patterns
+
+### Chrome Storage API Usage
+```javascript
+// Sync storage for settings (synced across devices)
+chrome.storage.sync.set({ openai_api_key: apiKey })
+chrome.storage.sync.get(['openai_api_key'])
+
+// Local storage for temporary data
+chrome.storage.local.set({ 
+    usage_stats: { total: 0, today: 0 },
+    conversation_history: []
+})
+```
+
+### Automatic Cleanup
+- Conversation history: 7-day retention
+- Usage stats: Daily reset
+- Periodic cleanup every hour
+
+## Security Implementation
+
+### Content Security Policy
+- No external script loading in content scripts
+- All libraries loaded locally
+- Strict CORS handling through background proxy
+
+### API Key Security
+- Stored in Chrome sync storage (encrypted by browser)
+- Never exposed in content scripts
+- Transmitted only to authorized endpoints
+
+### Permission Management
+- Minimal required permissions in manifest
+- Runtime permission checks
+- Graceful degradation when permissions unavailable
+
+## Error Handling Patterns
+
+### Layered Error Handling
+1. **Try-catch blocks** at function level
+2. **Promise rejection handling** for async operations
+3. **User-friendly error messages** in UI
+4. **Detailed logging** for debugging
+
+### Fallback Mechanisms
+- VAD failure → Traditional recording
+- Primary subtitle source → Alternative sources
+- Network failure → Cached data
+- API rate limits → User notification
+
+## Performance Optimizations
+
+### Lazy Loading
+- VAD libraries loaded only when needed
+- Subtitle processing on-demand
+- Background script optimization
+
+### Memory Management
+- Automatic cleanup of large objects
+- Efficient transcript storage
+- Limited conversation history
+
+### Network Optimization
+- Request batching where possible
+- Efficient header management
+- Response caching for repeated requests
+

@@ -196,7 +196,7 @@ class YouTubeVoiceAssistant {
             }
 
             // 开始语音处理
-            const result = await this.aiAssistant.processVoiceQuery(
+            const result = await this.aiAssistant.processVoiceQuerySmart(
                 context, 
                 (message, type) => this.updateStatus(message, type)
             );

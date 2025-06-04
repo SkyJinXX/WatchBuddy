@@ -320,6 +320,35 @@ async function fetchSubtitles(url, headers, sendResponse) {
         const contentType = response.headers.get('content-type');
         console.log('Background: 成功响应Content-Type:', contentType);
         
+        // 检查响应体是否为空
+        const contentLength = response.headers.get('content-length');
+        console.log('Background: 响应内容长度:', contentLength);
+        
+        if (contentLength === '0' || contentLength === null) {
+            // 尝试读取响应体
+            const responseText = await response.text();
+            console.log('Background: 响应体内容:', responseText);
+            
+            if (!responseText || responseText.trim() === '') {
+                console.log('Background: 响应体为空，这可能是API的问题');
+                throw new Error('API returned empty response body. This might be an API issue or the encryption parameters are incorrect.');
+            }
+            
+            // 如果有内容但content-length为0，尝试解析
+            try {
+                const data = JSON.parse(responseText);
+                console.log('Background: 成功解析空content-length的JSON响应');
+                sendResponse({ 
+                    success: true, 
+                    data: data 
+                });
+                return;
+            } catch (parseError) {
+                console.log('Background: JSON解析失败:', parseError.message);
+                throw new Error(`Invalid JSON response: ${parseError.message}. Response text: ${responseText.substring(0, 200)}`);
+            }
+        }
+        
         const data = await response.json();
         console.log('Background: 成功获取数据类型:', typeof data);
         console.log('Background: 数据结构:', Object.keys(data));

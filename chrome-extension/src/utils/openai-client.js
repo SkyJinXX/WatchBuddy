@@ -180,7 +180,7 @@ class OpenAIVoiceAssistant {
     }
 
     /**
-     * 录制音频
+     * 录制音频（传统固定时长方式，作为备选）
      */
     async recordAudio(duration = 5000) {
         return new Promise(async (resolve, reject) => {
@@ -225,6 +225,43 @@ class OpenAIVoiceAssistant {
     }
 
     /**
+     * 使用智能录音器录制音频（VAD自动检测）
+     */
+    async recordAudioSmart(onStatusUpdate) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const recorder = new SmartVoiceRecorder();
+                
+                recorder.setCallbacks({
+                    onSpeechStart: () => {
+                        onStatusUpdate('正在录音...', 'recording');
+                    },
+                    onSpeechEnd: (audioBlob) => {
+                        onStatusUpdate('录音完成', 'processing');
+                        recorder.destroy();
+                        resolve(audioBlob);
+                    },
+                    onStatusUpdate: onStatusUpdate
+                });
+
+                await recorder.startSmartRecording();
+
+                // 设置超时保护（最多30秒）
+                setTimeout(() => {
+                    if (recorder.recording) {
+                        recorder.stopRecording();
+                        recorder.destroy();
+                        reject(new Error('录音超时，请重试'));
+                    }
+                }, 30000);
+
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    /**
      * 构建YouTube助手的对话消息
      */
     buildYouTubeAssistantMessages(userQuestion, context) {
@@ -253,7 +290,67 @@ ${context.fullTranscript}
     }
 
     /**
-     * 完整的三步处理流程
+     * 智能语音查询处理流程（使用VAD自动检测）
+     */
+    async processVoiceQuerySmart(context, onStatusUpdate) {
+        try {
+            onStatusUpdate('准备录音，请开始说话...', 'recording');
+            
+            // 步骤1: 智能录制音频（VAD自动检测语音结束）
+            const audioBlob = await this.recordAudioSmart(onStatusUpdate);
+            
+            // 步骤2: 语音转文字
+            onStatusUpdate('转录中...', 'processing');
+            const transcript = await this.transcribeAudio(audioBlob, {
+                language: 'en',
+                response_format: 'text'
+            });
+            console.log('用户问题:', transcript);
+
+            // 步骤3: AI对话
+            onStatusUpdate('AI思考中...', 'processing');
+            const messages = this.buildYouTubeAssistantMessages(transcript, context);
+            const aiResponse = await this.chatCompletion(messages, {
+                max_tokens: 200,
+                temperature: 0.7
+            });
+            console.log('AI回复:', aiResponse);
+
+            // 步骤4: 文字转语音
+            onStatusUpdate('生成语音中...', 'processing');
+            const audioData = await this.textToSpeech(aiResponse, {
+                voice: 'alloy'
+            });
+
+            // 步骤5: 播放回复
+            onStatusUpdate('播放回复...', 'playing');
+            await this.playAudio(audioData);
+            
+            onStatusUpdate('完成', 'success');
+            
+            return {
+                userQuestion: transcript,
+                aiResponse: aiResponse,
+                audioData: audioData
+            };
+
+        } catch (error) {
+            console.error('智能语音处理失败:', error);
+            onStatusUpdate('错误: ' + error.message, 'error');
+            
+            // 如果VAD失败，尝试使用传统录音方式
+            if (error.message.includes('VAD') || error.message.includes('语音检测')) {
+                console.log('尝试使用传统录音方式...');
+                onStatusUpdate('切换到传统录音模式...', 'info');
+                return await this.processVoiceQuery(context, onStatusUpdate);
+            }
+            
+            throw error;
+        }
+    }
+
+    /**
+     * 完整的三步处理流程（传统固定时长录音）
      */
     async processVoiceQuery(context, onStatusUpdate) {
         try {
@@ -275,7 +372,7 @@ ${context.fullTranscript}
             const messages = this.buildYouTubeAssistantMessages(transcript, context);
             const aiResponse = await this.chatCompletion(messages, {
                 max_tokens: 200,
-                temperature: 0.8
+                temperature: 0.7
             });
             console.log('AI回复:', aiResponse);
 

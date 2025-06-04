@@ -1,0 +1,133 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# YouTube Voice Assistant Chrome Extension - Project Overview
+
+## Project Description
+This is a Chrome extension that provides AI-powered voice interaction for YouTube videos. Users can ask questions about video content through voice input and receive intelligent responses based on the video's subtitles.
+
+## Core Features
+- **Voice Activity Detection (VAD)**: Intelligent voice recording that automatically starts/stops based on speech detection
+- **YouTube Subtitle Extraction**: Fetches and processes video subtitles from YouTube using encrypted API calls
+- **AI-Powered Q&A**: Uses OpenAI API to answer questions about video content with full subtitle context
+- **Text-to-Speech**: Converts AI responses to audio for hands-free interaction
+- **Smart Context Management**: Provides relevant subtitle context without spoilers
+
+## Project Structure
+
+### Main Directory
+- [README.md](mdc:README.md) - Project documentation and setup instructions
+- [INSTALL.md](mdc:INSTALL.md) - Installation guide
+- [TEST_GUIDE.md](mdc:TEST_GUIDE.md) - Testing procedures
+- [DEPLOYMENT_CHECKLIST.md](mdc:DEPLOYMENT_CHECKLIST.md) - Deployment guidelines
+- [reference-get-subtitle.js](mdc:reference-get-subtitle.js) - Original Tampermonkey script reference
+- [test-encryption-debug.html](mdc:test-encryption-debug.html) - Encryption debugging tool
+
+### Chrome Extension Core (`chrome-extension/`)
+- [manifest.json](mdc:chrome-extension/manifest.json) - Extension manifest with permissions and configuration
+- [src/content.js](mdc:chrome-extension/src/content.js) - Main content script injected into YouTube pages
+- [src/background.js](mdc:chrome-extension/src/background.js) - Service worker handling API requests and message passing
+- [src/popup.html](mdc:chrome-extension/src/popup.html) - Extension popup interface
+- [src/popup.js](mdc:chrome-extension/src/popup.js) - Popup logic and settings management
+- [src/styles.css](mdc:chrome-extension/src/styles.css) - UI styling for all components
+
+### Utility Libraries (`chrome-extension/src/utils/`)
+- [subtitle-extractor.js](mdc:chrome-extension/src/utils/subtitle-extractor.js) - YouTube subtitle fetching and encryption
+- [voice-recorder.js](mdc:chrome-extension/src/utils/voice-recorder.js) - VAD-based smart voice recording
+- [openai-client.js](mdc:chrome-extension/src/utils/openai-client.js) - OpenAI API integration with dual recording methods
+- [crypto-js.min.js](mdc:chrome-extension/src/utils/crypto-js.min.js) - Cryptographic functions for subtitle API
+- [ort.js](mdc:chrome-extension/src/utils/ort.js) - ONNX Runtime for VAD processing (3.8MB)
+- [vad-web.js](mdc:chrome-extension/src/utils/vad-web.js) - Voice Activity Detection library
+
+### Testing and Debug Tools
+- [test-vad.html](mdc:chrome-extension/test-vad.html) - VAD functionality testing
+- [test-subtitle-debug.html](mdc:chrome-extension/test-subtitle-debug.html) - Subtitle extraction debugging
+- [test-encryption-debug.html](mdc:chrome-extension/test-encryption-debug.html) - Encryption validation
+- [start-test-server.py](mdc:chrome-extension/start-test-server.py) - Local test server
+- [DEBUG_GUIDE.md](mdc:chrome-extension/DEBUG_GUIDE.md) - Debugging procedures
+
+### Assets
+- [icons/](mdc:chrome-extension/icons) - Extension icons (16px, 48px, 128px)
+
+## Technical Architecture
+
+### Technologies Used
+- **JavaScript ES6+**: Modern JavaScript with async/await patterns
+- **Chrome Extension Manifest V3**: Latest extension architecture with service workers
+- **Voice Activity Detection**: @ricky0123/vad-web library with ONNX Runtime
+- **Cryptography**: CryptoJS for subtitle API encryption (AES-256-CBC)
+- **OpenAI API**: GPT-4o-mini for intelligent responses
+- **Web Speech API**: Text-to-Speech functionality
+
+### Key Technical Components
+
+#### 1. Subtitle Extraction System
+- Replicates Tampermonkey script encryption for downsub.com API
+- AES-256-CBC encryption with random salt and IV
+- Base64 encoding for API communication
+- CORS handling through background script proxy
+
+#### 2. Voice Activity Detection (VAD)
+- Real-time speech detection using neural networks
+- Configurable thresholds for speech/silence detection
+- Fallback to traditional 5-second recording
+- Smart audio preprocessing and format conversion
+
+#### 3. Context Management
+- Full transcript storage without character limits
+- Smart context extraction (4-5 sentences before current time)
+- Timestamp-based subtitle filtering
+- Spoiler prevention for future content
+
+#### 4. Security and Permissions
+- Local library loading for Chrome extension compliance
+- Secure API key storage in Chrome sync storage
+- CORS proxy through background service worker
+- Proper content security policy implementation
+
+## Development Patterns
+
+### Message Passing Architecture
+- Content script ↔ Background script communication
+- Async message handling with Promise-based responses
+- Error propagation and logging system
+
+### Error Handling Strategy
+- Comprehensive try-catch blocks
+- Fallback mechanisms (VAD → traditional recording)
+- Detailed console logging for debugging
+- User-friendly error messages
+
+### Storage Management
+- Chrome sync storage for settings and API keys
+- Local storage for conversation history and usage stats
+- Automatic cleanup of expired data
+
+## Common Modification Areas
+
+### Adding New Features
+1. **Voice Commands**: Extend [voice-recorder.js](mdc:chrome-extension/src/utils/voice-recorder.js)
+2. **AI Models**: Modify [openai-client.js](mdc:chrome-extension/src/utils/openai-client.js)
+3. **Subtitle Sources**: Enhance [subtitle-extractor.js](mdc:chrome-extension/src/utils/subtitle-extractor.js)
+4. **UI Components**: Update [popup.html](mdc:chrome-extension/src/popup.html) and [styles.css](mdc:chrome-extension/src/styles.css)
+
+### Debugging Issues
+1. **Encryption Problems**: Use [test-encryption-debug.html](mdc:chrome-extension/test-encryption-debug.html)
+2. **VAD Issues**: Test with [test-vad.html](mdc:chrome-extension/test-vad.html)
+3. **Subtitle Extraction**: Debug with [test-subtitle-debug.html](mdc:chrome-extension/test-subtitle-debug.html)
+4. **API Integration**: Check [background.js](mdc:chrome-extension/src/background.js) logs
+
+### Configuration Points
+- VAD sensitivity: `positiveSpeechThreshold`, `negativeSpeechThreshold`
+- OpenAI model: Currently using `gpt-4o-mini`
+- Subtitle context range: Default 4-5 sentences before current time
+- Recording timeout: Fallback to 5-second recording
+
+## Security Considerations
+- All external libraries are downloaded locally for security compliance
+- API keys stored securely in Chrome storage
+- No external script loading in content scripts
+- CORS handled through background proxy
+
