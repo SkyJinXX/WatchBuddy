@@ -86,6 +86,44 @@ class YouTubeVoiceAssistant {
             
             console.log('Content: 手动字幕解析完成:', this.manualSubtitle);
             this.updateStatus('✅ 手动字幕已加载', 'success');
+            
+            // 通知background script手动字幕已准备就绪
+            chrome.runtime.sendMessage({
+                action: 'subtitles_ready',
+                videoId: videoId,
+                transcript: this.manualSubtitle.transcript,
+                language: this.manualSubtitle.language,
+                timestamps: this.manualSubtitle.timestamps,
+                source: 'manual' // 标记为手动上传
+            });
+        }
+    }
+
+    /**
+     * 处理缓存的API字幕
+     */
+    handleCachedApiSubtitle(videoId, apiSubtitleData) {
+        console.log('Content: 加载缓存的API字幕:', videoId, apiSubtitleData);
+        
+        const currentVideoId = this.getCurrentVideoId();
+        if (currentVideoId === videoId) {
+            // 恢复字幕数据
+            this.subtitles = apiSubtitleData.timestamps;
+            this.fullTranscript = apiSubtitleData.transcript;
+            this.currentSubtitleLanguage = apiSubtitleData.language;
+            
+            console.log('Content: 缓存API字幕加载完成:', apiSubtitleData);
+            this.updateStatus(`✅ 自动字幕已加载 (${apiSubtitleData.language})`, 'success');
+            
+            // 通知background script字幕已准备就绪
+            chrome.runtime.sendMessage({
+                action: 'subtitles_ready',
+                videoId: videoId,
+                transcript: apiSubtitleData.transcript,
+                language: apiSubtitleData.language,
+                timestamps: apiSubtitleData.timestamps,
+                source: 'api' // 标记为API字幕
+            });
         }
     }
 
@@ -97,8 +135,20 @@ class YouTubeVoiceAssistant {
         
         const currentVideoId = this.getCurrentVideoId();
         if (currentVideoId === videoId) {
+            // 清除所有字幕数据
             this.manualSubtitle = null;
-            this.updateStatus('字幕已清除', 'info');
+            this.subtitles = null;
+            this.fullTranscript = null;
+            this.currentSubtitleLanguage = null;
+            
+            this.updateStatus('所有字幕已清除', 'info');
+            
+            // 通知background script字幕已清除
+            chrome.runtime.sendMessage({
+                action: 'subtitle_status_updated',
+                videoId: videoId,
+                hasSubtitles: false
+            });
         }
     }
 
@@ -582,18 +632,27 @@ class YouTubeVoiceAssistant {
             try {
                 console.log('Content: Preloading subtitles for video:', videoId);
                 
-                // 首先检查是否有手动上传的字幕
-                const manualResult = await chrome.storage.local.get([`manual_subtitle_${videoId}`]);
+                // 优先级: 手动字幕 > 缓存的API字幕 > 实时获取API字幕
+                const [manualResult, apiResult] = await Promise.all([
+                    chrome.storage.local.get([`manual_subtitle_${videoId}`]),
+                    chrome.storage.local.get([`api_subtitle_${videoId}`])
+                ]);
+                
                 const manualSubtitleData = manualResult[`manual_subtitle_${videoId}`];
+                const apiSubtitleData = apiResult[`api_subtitle_${videoId}`];
                 
                 if (manualSubtitleData) {
                     console.log('Content: 找到手动上传的字幕');
                     this.handleManualSubtitleUploaded(videoId, manualSubtitleData);
+                } else if (apiSubtitleData) {
+                    console.log('Content: 找到缓存的API字幕');
+                    this.handleCachedApiSubtitle(videoId, apiSubtitleData);
                 } else {
                     // 尝试使用API获取字幕
                     try {
                         const result = await this.loadSubtitles(videoId);
                         console.log('Content: API字幕加载成功');
+                        this.updateStatus(`✅ 自动字幕已加载 (${result.subtitle.name})`, 'success');
                     } catch (error) {
                         console.warn('Content: API字幕加载失败，需要手动上传字幕:', error);
                         this.updateStatus('字幕获取失败，请手动上传', 'error');
@@ -635,13 +694,31 @@ class YouTubeVoiceAssistant {
             
             console.log(`字幕加载成功: ${result.subtitle.name}, ${result.content.length} 字符`);
 
+            // 缓存API字幕到本地存储
+            const apiSubtitleData = {
+                videoId: videoId,
+                content: result.content,
+                transcript: fullTranscript,
+                timestamps: subtitleTimestamps,
+                language: result.subtitle.name,
+                source: 'api',
+                timestamp: Date.now()
+            };
+
+            chrome.storage.local.set({
+                [`api_subtitle_${videoId}`]: apiSubtitleData
+            });
+
+            console.log(`API字幕已缓存到本地存储: ${videoId}`);
+
             // 通知background script字幕已准备就绪
             chrome.runtime.sendMessage({
                 action: 'subtitles_ready',
                 videoId: videoId,
                 transcript: fullTranscript,
                 language: result.subtitle.name,
-                timestamps: subtitleTimestamps
+                timestamps: subtitleTimestamps,
+                source: 'api' // 标记字幕来源
             });
             
             return {

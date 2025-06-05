@@ -47,9 +47,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             videoId: request.videoId,
             transcript: request.transcript,
             language: request.language,
-            timestamps: request.timestamps
+            timestamps: request.timestamps,
+            source: request.source || 'unknown'
         };
-        console.log(`Background: 字幕数据已保存 - 视频ID: ${request.videoId}, 语言: ${request.language}, 文本长度: ${request.transcript.length}`);
+        console.log(`Background: 字幕数据已保存 - 视频ID: ${request.videoId}, 语言: ${request.language}, 来源: ${request.source}, 文本长度: ${request.transcript.length}`);
+        
+        // 通知popup更新状态
+        chrome.runtime.sendMessage({
+            action: 'subtitle_status_updated',
+            videoId: request.videoId,
+            language: request.language,
+            source: request.source || 'unknown',
+            hasSubtitles: true
+        }).catch(() => {
+            // popup可能没有打开，忽略错误
+        });
+        
         sendResponse({ success: true });
     } else if (request.action === 'transcribe_audio') {
         transcribeAudio(request.audioBlob, sendResponse);
@@ -63,6 +76,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.error('Content Script Error:', request.error);
     } else if (request.action === 'check_permissions') {
         checkPermissions(sendResponse);
+    } else if (request.action === 'subtitle_status_updated') {
+        // 转发字幕状态更新给popup
+        chrome.runtime.sendMessage(request).catch(() => {
+            // popup可能没有打开，忽略错误
+        });
+        sendResponse({ success: true });
+    } else if (request.action === 'get_current_subtitles') {
+        // 返回当前字幕状态
+        const hasSubtitles = currentVideoSubtitles.videoId === request.videoId && 
+                           currentVideoSubtitles.transcript && 
+                           currentVideoSubtitles.transcript.length > 0;
+        
+        sendResponse({
+            success: true,
+            hasSubtitles: hasSubtitles,
+            language: currentVideoSubtitles.language,
+            source: currentVideoSubtitles.source || 'unknown'
+        });
     } else {
         console.log('未知消息类型:', request.action);
     }
@@ -167,12 +198,18 @@ async function cleanupStorage() {
         const allData = await chrome.storage.local.get(null);
         
         const keysToRemove = [];
+        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+        
         for (const key in allData) {
             if (key.startsWith('conversation_') && allData[key].timestamp < sevenDaysAgo) {
                 keysToRemove.push(key);
             }
             // 清理旧版本的手动字幕（30天前）
-            if (key.startsWith('manual_subtitle_') && allData[key].timestamp < (Date.now() - 30 * 24 * 60 * 60 * 1000)) {
+            if (key.startsWith('manual_subtitle_') && allData[key].timestamp < thirtyDaysAgo) {
+                keysToRemove.push(key);
+            }
+            // 清理旧版本的API字幕（30天前）
+            if (key.startsWith('api_subtitle_') && allData[key].timestamp < thirtyDaysAgo) {
                 keysToRemove.push(key);
             }
         }

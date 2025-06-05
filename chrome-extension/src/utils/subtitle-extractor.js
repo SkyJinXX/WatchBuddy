@@ -185,9 +185,6 @@ class SubtitleExtractor {
                 ff.url = this._decode(ff.url).replace(/^"|"$/gi, "");
                 ff.enc_url = result.subtitlesAutoTrans[i].url;
                 
-                // 输出解码后的原始YouTube URL
-                console.log('SubtitleExtractor: 解码后的原始YouTube字幕URL (自动翻译):', ff.url);
-                
                 ff.download = {};
                 const params = new URLSearchParams({
                     title: encodeURIComponent(ff.name),

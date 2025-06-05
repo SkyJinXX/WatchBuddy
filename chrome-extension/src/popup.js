@@ -22,6 +22,42 @@ async function initPopup() {
     
     // 绑定事件监听器
     bindEventListeners();
+    
+    // 设置消息监听器
+    setupMessageListener();
+}
+
+/**
+ * 设置消息监听器
+ */
+function setupMessageListener() {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === 'subtitle_status_updated') {
+            handleSubtitleStatusUpdate(request);
+        }
+    });
+}
+
+/**
+ * 处理字幕状态更新
+ */
+function handleSubtitleStatusUpdate(data) {
+    console.log('Popup: 收到字幕状态更新:', data);
+    
+    if (data.hasSubtitles) {
+        let statusMessage = '';
+        if (data.source === 'manual') {
+            statusMessage = '✅ 已加载手动上传的字幕';
+        } else if (data.source === 'api') {
+            statusMessage = `✅ 已加载自动字幕 (${data.language})`;
+        } else {
+            statusMessage = `✅ 已加载字幕 (${data.language})`;
+        }
+        
+        updateSubtitleStatus(statusMessage, 'loaded');
+    } else {
+        updateSubtitleStatus('❌ 当前视频暂无可用字幕', 'empty');
+    }
 }
 
 /**
@@ -106,16 +142,31 @@ async function loadSubtitleStatus() {
             // 更新downsub链接
             updateDownsubLink(tab.url);
             
-            // 检查是否有手动上传的字幕
-            const result = await chrome.storage.local.get([`manual_subtitle_${videoId}`]);
-            const manualSubtitle = result[`manual_subtitle_${videoId}`];
+            // 优先级: 手动字幕 > 缓存的API字幕 > background中的API字幕
+            const [manualResult, apiResult] = await Promise.all([
+                chrome.storage.local.get([`manual_subtitle_${videoId}`]),
+                chrome.storage.local.get([`api_subtitle_${videoId}`])
+            ]);
+            
+            const manualSubtitle = manualResult[`manual_subtitle_${videoId}`];
+            const apiSubtitle = apiResult[`api_subtitle_${videoId}`];
             
             if (manualSubtitle) {
-                console.log('找到已保存的字幕，videoId:', videoId, '内容长度:', manualSubtitle.content.length);
+                console.log('找到已保存的手动字幕，videoId:', videoId, '内容长度:', manualSubtitle.content.length);
                 updateSubtitleStatus('✅ 已加载手动上传的字幕', 'loaded');
+            } else if (apiSubtitle) {
+                console.log('找到已缓存的API字幕，videoId:', videoId, '语言:', apiSubtitle.language);
+                updateSubtitleStatus(`✅ 已加载自动字幕 (${apiSubtitle.language})`, 'loaded');
             } else {
-                console.log('未找到已保存的字幕，videoId:', videoId);
-                updateSubtitleStatus('❌ 当前视频暂无可用字幕', 'empty');
+                // 检查background中是否有API字幕数据
+                chrome.runtime.sendMessage({ action: 'get_current_subtitles', videoId: videoId }, (response) => {
+                    if (response && response.success && response.hasSubtitles) {
+                        updateSubtitleStatus(`✅ 已加载自动字幕 (${response.language})`, 'loaded');
+                    } else {
+                        console.log('未找到已保存的字幕，videoId:', videoId);
+                        updateSubtitleStatus('❌ 当前视频暂无可用字幕', 'empty');
+                    }
+                });
             }
         }
     } catch (error) {
@@ -244,8 +295,11 @@ async function clearSubtitle() {
         const videoId = urlParams.get('v');
 
         if (videoId) {
-            // 从存储中删除
-            await chrome.storage.local.remove([`manual_subtitle_${videoId}`]);
+            // 从存储中删除手动字幕和API字幕缓存
+            await chrome.storage.local.remove([
+                `manual_subtitle_${videoId}`,
+                `api_subtitle_${videoId}`
+            ]);
             
             // 重置文件选择标签
             document.getElementById('fileInputLabel').textContent = '📁 点击选择SRT文件或拖拽到此处';
@@ -257,7 +311,7 @@ async function clearSubtitle() {
             });
 
             updateSubtitleStatus('❌ 当前视频暂无可用字幕', 'empty');
-            showStatus('字幕已清除', 'success');
+            showStatus('所有字幕数据已清除', 'success');
         }
     } catch (error) {
         console.error('清除字幕失败:', error);
