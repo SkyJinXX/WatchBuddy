@@ -12,7 +12,7 @@ class OpenAIVoiceAssistant {
         this.videoConversations = new Map(); // videoId -> conversation history
         this.currentVideoId = null;
         this.maxHistoryLength = 20; // 每个视频最多保留20条对话记录
-        this.maxVideoCount = 5; // 最多缓存5个视频的对话历史
+        this.maxVideoCount = 10; // 最多缓存5个视频的对话历史
 
         // 音频ID缓存管理
         this.audioCache = new Map(); // audioId -> { data, transcript, expiresAt }
@@ -500,9 +500,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
                 recorder = new SmartVoiceRecorder();
                 
                 recorder.setCallbacks({
-                    onSpeechStart: () => {
-                        onStatusUpdate('正在录音...', 'recording');
-                    },
+                    onSpeechStart: () => {},
                     onSpeechEnd: (audioBlob) => {
                         onStatusUpdate('录音完成', 'processing');
                         // 清除超时定时器
@@ -562,7 +560,7 @@ Video ID: ${context.videoId}
 Full Transcript:
 ${context.fullTranscript || 'Loading subtitles...'}
 
-Please provide concise answers (within 30 words), focusing on content relevant to the current time position.`;
+Please provide concise answers (within 30 words) since your response will be converted to speech. Focus on content relevant to the current time position. When asked to repeat what was just said in the video, provide word-by-word accurate repetition without omitting details.`;
 
         // 动态系统消息 (当前时间戳和相关字幕)
         const dynamicSystemMessage = `Current video playback time: ${Math.floor(context.currentTime)} seconds
@@ -666,7 +664,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
         };
 
         try {
-            onStatusUpdate('准备录音，请开始说话...', 'recording');
+            // onStatusUpdate('准备录音，请开始说话...', 'recording');
             
             // 步骤1: 智能录制音频
             const recordingStart = performance.now();

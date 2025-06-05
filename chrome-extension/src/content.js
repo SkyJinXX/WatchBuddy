@@ -16,9 +16,10 @@ class YouTubeVoiceAssistant {
         this.manualSubtitle = null; // 手动上传的字幕数据
         this.statusHideTimer = null; // 状态自动隐藏计时器
         this.savePositionTimer = null; // 位置保存防抖计时器
+        this.hasTemporaryStatus = false; // 是否有临时状态（会自动隐藏的状态）
         
         // 配置选项
-        this.contextSentencesBefore = 5; // 当前时间点之前的句子数量（可配置）
+        this.contextSentencesBefore = 4; // 当前时间点之前的句子数量（可配置）
         
         this.init();
     }
@@ -465,15 +466,45 @@ class YouTubeVoiceAssistant {
 
     showStatus() {
         if (this.statusDisplay) {
+            // 如果没有临时状态，显示默认的悬浮状态
+            if (!this.hasTemporaryStatus) {
+                this.showHoverStatus();
+            }
             this.statusDisplay.classList.add('visible');
         }
     }
 
     hideStatus() {
-        console.log('hideStatus', this.statusDisplay);
         if (this.statusDisplay) {
             this.statusDisplay.classList.remove('visible');
         }
+    }
+
+    /**
+     * 显示悬浮状态（当前功能状态）
+     */
+    showHoverStatus() {
+        if (!this.statusDisplay) return;
+
+        const statusText = this.statusDisplay.querySelector('.yva-status-text');
+        
+        // 根据当前状态显示不同的提示
+        let message = '点击开始语音对话';
+        let type = 'info';
+
+        // 检查是否有字幕
+        const hasSubtitles = this.manualSubtitle || (this.subtitles && this.fullTranscript);
+        if (!hasSubtitles) {
+            message = '需要字幕数据';
+            type = 'error';
+        } else if (this.isProcessing) {
+            message = '处理中...';
+            type = 'processing';
+        }
+
+        statusText.textContent = message;
+        this.statusDisplay.className = `yva-status-display ${type}`;
+        this.hasTemporaryStatus = false; // 标记为非临时状态
     }
 
     updateStatus(message, type = 'info') {
@@ -485,6 +516,9 @@ class YouTubeVoiceAssistant {
 
         statusText.textContent = message;
         this.statusDisplay.className = `yva-status-display ${type} visible`;
+
+        // 标记为临时状态（会自动隐藏的状态）
+        this.hasTemporaryStatus = (type === 'processing' || type === 'recording' || type === 'success' || type === 'error');
 
         // 更新按钮状态
         if (type === 'processing' || type === 'recording') {
@@ -502,11 +536,12 @@ class YouTubeVoiceAssistant {
             clearTimeout(this.statusHideTimer);
         }
 
-        // 自动隐藏成功和信息状态
-        if (type === 'success' || type === 'info') {
+        // 自动隐藏临时状态
+        if (this.hasTemporaryStatus) {
             this.statusHideTimer = setTimeout(() => {
+                this.hasTemporaryStatus = false; // 清除临时状态标记
                 this.hideStatus();
-            }, type === 'success' ? 2000 : 3000);
+            }, type === 'success' ? 2000 : (type === 'error' ? 4000 : 3000));
         }
     }
 
@@ -552,7 +587,9 @@ class YouTubeVoiceAssistant {
             });
         } finally {
             this.isProcessing = false;
+            // 延迟一段时间后清除临时状态，让用户能看到结果
             setTimeout(() => {
+                this.hasTemporaryStatus = false;
                 this.hideStatus();
             }, 3000);
         }
@@ -854,6 +891,9 @@ class YouTubeVoiceAssistant {
             clearTimeout(this.savePositionTimer);
             this.savePositionTimer = null;
         }
+        
+        // 重置状态标记
+        this.hasTemporaryStatus = false;
         
         this.subtitlesData = null;
         this.manualSubtitle = null;
