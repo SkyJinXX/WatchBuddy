@@ -457,7 +457,7 @@ async function chatWithOpenAI(messages, videoContext, sendResponse) {
                 model: "gpt-4o-mini",
                 messages: openaiMessages,
                 max_tokens: 1000,
-                temperature: 0.7
+                temperature: 1.0
             })
         });
 

@@ -284,6 +284,9 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             if (options.temperature) {
                 formData.append('temperature', options.temperature.toString());
             }
+            if (options.prompt) {
+                formData.append('prompt', options.prompt);
+            }
 
             const response = await fetch(`${this.baseURL}/audio/transcriptions`, {
                 method: 'POST',
@@ -322,7 +325,9 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             // 步骤1: 先用gpt-4o-mini-transcribe转录音频
             console.log('🎤 转录用户语音...');
             const transcript = await this.transcribeAudio(audioBlob, {
-                response_format: 'text'
+                response_format: 'text',
+                prompt: 'transcribe everything, don\'t miss any words',
+                temperature: 0.0
             });
             console.log('📝 转录结果:', transcript);
             
@@ -338,7 +343,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
                 },
                 messages: messages,
                 max_completion_tokens: 1024,
-                temperature: 0.7
+                temperature: 1.0
             };
 
             // 输出请求大小统计
