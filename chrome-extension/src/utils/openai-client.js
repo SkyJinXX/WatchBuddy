@@ -257,7 +257,7 @@ class OpenAIVoiceAssistant {
             const requestBody = {
                 model: 'gpt-4o-mini',
                 messages: messages,
-                max_tokens: options.max_tokens || 200,
+                max_completion_tokens: options.max_tokens || 100,
                 temperature: options.temperature || 0.7,
                 top_p: options.top_p || 1,
                 frequency_penalty: options.frequency_penalty || 0,
@@ -484,7 +484,7 @@ Video ID: ${context.videoId}
 Full Transcript:
 ${context.fullTranscript || 'Loading subtitles...'}
 
-Please provide concise answers (within 100 words), focusing on content relevant to the current time position.`;
+Please provide concise answers (within 30 words), focusing on content relevant to the current time position.`;
 
         // 构建当前问题的动态上下文消息（每次查询时更新）
         const currentDynamicContext = `Current video playback time: ${Math.floor(context.currentTime)} seconds
@@ -554,49 +554,78 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
      * 智能语音查询处理流程（使用VAD自动检测）
      */
     async processVoiceQuerySmart(context, onStatusUpdate) {
+        const startTime = performance.now();
+        let timings = {
+            recording: 0,
+            transcription: 0,
+            chatCompletion: 0,
+            textToSpeech: 0,
+            audioPlayback: 0,
+            total: 0
+        };
+
         try {
             onStatusUpdate('准备录音，请开始说话...', 'recording');
             
             // 步骤1: 智能录制音频（VAD自动检测语音结束）
+            const recordingStart = performance.now();
             const audioBlob = await this.recordAudioSmart(onStatusUpdate);
+            timings.recording = performance.now() - recordingStart;
             
             // 步骤2: 语音转文字
             onStatusUpdate('转录中...', 'processing');
+            const transcriptionStart = performance.now();
             const transcript = await this.transcribeAudio(audioBlob, {
                 language: 'en',
                 response_format: 'text'
             });
+            timings.transcription = performance.now() - transcriptionStart;
             console.log('用户问题:', transcript);
 
             // 步骤3: AI对话
             onStatusUpdate('AI思考中...', 'processing');
+            const chatStart = performance.now();
             const messages = this.buildYouTubeAssistantMessages(transcript, context);
             const aiResponse = await this.chatCompletion(messages, {
-                max_tokens: 200,
+                max_tokens: 100,
                 temperature: 0.7
             });
+            timings.chatCompletion = performance.now() - chatStart;
             console.log('AI回复:', aiResponse);
 
             // 步骤4: 文字转语音
             onStatusUpdate('生成语音中...', 'processing');
+            const ttsStart = performance.now();
             const audioData = await this.textToSpeech(aiResponse, {
                 voice: 'alloy'
             });
+            timings.textToSpeech = performance.now() - ttsStart;
 
             // 步骤5: 播放回复
             onStatusUpdate('播放回复...', 'playing');
+            const playbackStart = performance.now();
             await this.playAudio(audioData);
+            timings.audioPlayback = performance.now() - playbackStart;
             
-            onStatusUpdate('完成', 'success');
+            timings.total = performance.now() - startTime;
+            
+            // 输出详细的时间统计
+            this.logTimingStats(timings, 'Smart Voice Query');
+            
+            onStatusUpdate(`完成 (总耗时: ${Math.round(timings.total)}ms)`, 'success');
             
             return {
                 userQuestion: transcript,
                 aiResponse: aiResponse,
-                audioData: audioData
+                audioData: audioData,
+                timings: timings
             };
 
         } catch (error) {
+            timings.total = performance.now() - startTime;
             console.error('智能语音处理失败:', error);
+            console.log('⏱️ 失败前的处理时间:', this.formatTimings(timings));
+            
             onStatusUpdate('错误: ' + error.message, 'error');
             
             // 如果VAD失败，尝试使用传统录音方式
@@ -614,49 +643,78 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
      * 完整的三步处理流程（传统固定时长录音）
      */
     async processVoiceQuery(context, onStatusUpdate) {
+        const startTime = performance.now();
+        let timings = {
+            recording: 0,
+            transcription: 0,
+            chatCompletion: 0,
+            textToSpeech: 0,
+            audioPlayback: 0,
+            total: 0
+        };
+
         try {
             onStatusUpdate('开始录音...', 'recording');
             
             // 步骤1: 录制音频
+            const recordingStart = performance.now();
             const audioBlob = await this.recordAudio(5000);
+            timings.recording = performance.now() - recordingStart;
             
             // 步骤2: 语音转文字
             onStatusUpdate('转录中...', 'processing');
+            const transcriptionStart = performance.now();
             const transcript = await this.transcribeAudio(audioBlob, {
                 language: 'en',
                 response_format: 'text'
             });
+            timings.transcription = performance.now() - transcriptionStart;
             console.log('用户问题:', transcript);
 
             // 步骤3: AI对话
             onStatusUpdate('AI思考中...', 'processing');
+            const chatStart = performance.now();
             const messages = this.buildYouTubeAssistantMessages(transcript, context);
             const aiResponse = await this.chatCompletion(messages, {
-                max_tokens: 200,
+                max_tokens: 100,
                 temperature: 0.7
             });
+            timings.chatCompletion = performance.now() - chatStart;
             console.log('AI回复:', aiResponse);
 
             // 步骤4: 文字转语音
             onStatusUpdate('生成语音中...', 'processing');
+            const ttsStart = performance.now();
             const audioData = await this.textToSpeech(aiResponse, {
                 voice: 'alloy'
             });
+            timings.textToSpeech = performance.now() - ttsStart;
 
             // 步骤5: 播放回复
             onStatusUpdate('播放回复...', 'playing');
+            const playbackStart = performance.now();
             await this.playAudio(audioData);
+            timings.audioPlayback = performance.now() - playbackStart;
             
-            onStatusUpdate('完成', 'success');
+            timings.total = performance.now() - startTime;
+            
+            // 输出详细的时间统计
+            this.logTimingStats(timings, 'Traditional Voice Query');
+            
+            onStatusUpdate(`完成 (总耗时: ${Math.round(timings.total)}ms)`, 'success');
             
             return {
                 userQuestion: transcript,
                 aiResponse: aiResponse,
-                audioData: audioData
+                audioData: audioData,
+                timings: timings
             };
 
         } catch (error) {
+            timings.total = performance.now() - startTime;
             console.error('处理失败:', error);
+            console.log('⏱️ 失败前的处理时间:', this.formatTimings(timings));
+            
             onStatusUpdate('错误: ' + error.message, 'error');
             throw error;
         }
@@ -707,6 +765,47 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             timestamp: new Date().toISOString(),
             conversation: this.getCurrentConversationHistory()
         };
+    }
+
+    /**
+     * 格式化时间统计信息
+     */
+    formatTimings(timings) {
+        const format = (ms) => `${Math.round(ms)}ms`;
+        
+        return {
+            recording: format(timings.recording),
+            transcription: format(timings.transcription),
+            chatCompletion: format(timings.chatCompletion),
+            textToSpeech: format(timings.textToSpeech),
+            audioPlayback: format(timings.audioPlayback),
+            total: format(timings.total)
+        };
+    }
+
+    /**
+     * 输出详细的时间统计日志
+     */
+    logTimingStats(timings, operation) {
+        const formatted = this.formatTimings(timings);
+        
+        console.log(`\n⏱️ ===== ${operation} 时间统计 =====`);
+        console.log(`🎤 录音阶段:     ${formatted.recording}`);
+        console.log(`📝 语音转录:     ${formatted.transcription}`);
+        console.log(`🤖 AI回复生成:   ${formatted.chatCompletion}`);
+        console.log(`🔊 文字转语音:   ${formatted.textToSpeech}`);
+        console.log(`📢 音频播放:     ${formatted.audioPlayback}`);
+        console.log(`⏱️ 总耗时:       ${formatted.total}`);
+        console.log(`================================\n`);
+        
+        // 计算各阶段占比
+        const apiTime = timings.transcription + timings.chatCompletion + timings.textToSpeech;
+        const apiPercentage = Math.round((apiTime / timings.total) * 100);
+        
+        console.log(`📊 API请求总时间: ${Math.round(apiTime)}ms (${apiPercentage}% of total)`);
+        console.log(`   - Transcription: ${Math.round((timings.transcription/timings.total)*100)}%`);
+        console.log(`   - Chat Completion: ${Math.round((timings.chatCompletion/timings.total)*100)}%`);
+        console.log(`   - Text-to-Speech: ${Math.round((timings.textToSpeech/timings.total)*100)}%`);
     }
 
     // ============ 向后兼容方法 ============
