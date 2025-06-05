@@ -10,9 +10,12 @@ class YouTubeVoiceAssistant {
         this.currentVideoId = null;
         this.subtitlesData = null;
         this.isProcessing = false;
+        this.floatingContainer = null; // 浮动容器
         this.floatingButton = null;
         this.statusDisplay = null;
         this.manualSubtitle = null; // 手动上传的字幕数据
+        this.statusHideTimer = null; // 状态自动隐藏计时器
+        this.savePositionTimer = null; // 位置保存防抖计时器
         
         // 配置选项
         this.contextSentencesBefore = 5; // 当前时间点之前的句子数量（可配置）
@@ -145,7 +148,11 @@ class YouTubeVoiceAssistant {
      * 重新加载助手
      */
     async reloadAssistant() {
+        console.log('重新加载助手');
         this.cleanup();
+        // 移除任何残留的浮动容器
+        const existingContainers = document.querySelectorAll('.yva-floating-container');
+        existingContainers.forEach(container => container.remove());
         await this.setup();
     }
 
@@ -187,19 +194,19 @@ class YouTubeVoiceAssistant {
     }
 
     createFloatingButton() {
-        // 移除已存在的按钮
-        if (this.floatingButton) {
-            this.floatingButton.remove();
+        // 移除已存在的容器
+        if (this.floatingContainer) {
+            this.floatingContainer.remove();
         }
 
         // 创建浮动容器
         const container = document.createElement('div');
         container.className = 'yva-floating-container';
         container.innerHTML = `
-            <div class="yva-status-display" id="yva-status" style="display: none;">
+            <div class="yva-status-display" id="yva-status">
                 <span class="yva-status-text">准备就绪</span>
             </div>
-            <button class="yva-floating-button" id="yva-voice-btn" title="语音助手 (点击提问)">
+            <button class="yva-floating-button" id="yva-voice-btn">
                 <svg class="yva-mic-icon" viewBox="0 0 24 24">
                     <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
                     <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
@@ -213,26 +220,209 @@ class YouTubeVoiceAssistant {
         // 添加到页面
         document.body.appendChild(container);
         
+        // 保存容器和子元素的引用
+        this.floatingContainer = container;
         this.floatingButton = container.querySelector('#yva-voice-btn');
         this.statusDisplay = container.querySelector('#yva-status');
         
-        // 绑定点击事件
-        this.floatingButton.addEventListener('click', () => this.handleVoiceQuery());
+        // 绑定拖动和点击事件
+        this.setupDragAndClick();
         
         // 悬停事件
         this.floatingButton.addEventListener('mouseenter', () => this.showStatus());
         this.floatingButton.addEventListener('mouseleave', () => this.hideStatus());
+        
+        // 加载保存的位置
+        this.loadPosition();
+    }
+
+    setupDragAndClick() {
+        let isDragging = false;
+        let dragStarted = false;
+        let startX = 0;
+        let startY = 0;
+        let initialMouseX = 0;
+        let initialMouseY = 0;
+
+        const handleMouseDown = (e) => {
+            if (this.isProcessing) return;
+            
+            isDragging = true;
+            dragStarted = false;
+            initialMouseX = e.clientX;
+            initialMouseY = e.clientY;
+            
+            const rect = this.floatingContainer.getBoundingClientRect();
+            startX = rect.left;
+            startY = rect.top;
+            
+            e.preventDefault();
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        };
+
+        const handleMouseMove = (e) => {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - initialMouseX;
+            const deltaY = e.clientY - initialMouseY;
+            
+            // 判断是否开始拖动（移动距离超过阈值）
+            if (!dragStarted && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
+                dragStarted = true;
+                this.floatingButton.classList.add('dragging');
+                this.hideStatus();
+            }
+            
+            if (dragStarted) {
+                const newX = startX + deltaX;
+                const newY = startY + deltaY;
+                
+                // 限制在视窗范围内
+                const maxX = window.innerWidth - this.floatingContainer.offsetWidth;
+                const maxY = window.innerHeight - this.floatingContainer.offsetHeight;
+                
+                const boundedX = Math.max(0, Math.min(newX, maxX));
+                const boundedY = Math.max(0, Math.min(newY, maxY));
+                
+                this.floatingContainer.style.left = boundedX + 'px';
+                this.floatingContainer.style.top = boundedY + 'px';
+            }
+        };
+
+        const handleMouseUp = (e) => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            
+            if (dragStarted) {
+                this.floatingButton.classList.remove('dragging');
+                // 保存位置到存储
+                this.savePosition();
+            } else {
+                // 如果没有拖动，则处理点击
+                this.handleVoiceQuery();
+            }
+            
+            isDragging = false;
+            dragStarted = false;
+        };
+
+        // 触摸事件支持
+        const handleTouchStart = (e) => {
+            if (this.isProcessing) return;
+            
+            const touch = e.touches[0];
+            isDragging = true;
+            dragStarted = false;
+            initialMouseX = touch.clientX;
+            initialMouseY = touch.clientY;
+            
+            const rect = this.floatingContainer.getBoundingClientRect();
+            startX = rect.left;
+            startY = rect.top;
+            
+            e.preventDefault();
+        };
+
+        const handleTouchMove = (e) => {
+            if (!isDragging) return;
+            
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - initialMouseX;
+            const deltaY = touch.clientY - initialMouseY;
+            
+            if (!dragStarted && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
+                dragStarted = true;
+                this.floatingButton.classList.add('dragging');
+                this.hideStatus();
+            }
+            
+            if (dragStarted) {
+                const newX = startX + deltaX;
+                const newY = startY + deltaY;
+                
+                const maxX = window.innerWidth - this.floatingContainer.offsetWidth;
+                const maxY = window.innerHeight - this.floatingContainer.offsetHeight;
+                
+                const boundedX = Math.max(0, Math.min(newX, maxX));
+                const boundedY = Math.max(0, Math.min(newY, maxY));
+                
+                this.floatingContainer.style.left = boundedX + 'px';
+                this.floatingContainer.style.top = boundedY + 'px';
+            }
+            
+            e.preventDefault();
+        };
+
+        const handleTouchEnd = (e) => {
+            if (dragStarted) {
+                this.floatingButton.classList.remove('dragging');
+                this.savePosition();
+            } else {
+                this.handleVoiceQuery();
+            }
+            
+            isDragging = false;
+            dragStarted = false;
+        };
+
+        // 绑定事件
+        this.floatingButton.addEventListener('mousedown', handleMouseDown);
+        this.floatingButton.addEventListener('touchstart', handleTouchStart, { passive: false });
+        this.floatingButton.addEventListener('touchmove', handleTouchMove, { passive: false });
+        this.floatingButton.addEventListener('touchend', handleTouchEnd);
+    }
+
+    savePosition() {
+        // 防抖保存位置
+        if (this.savePositionTimer) {
+            clearTimeout(this.savePositionTimer);
+        }
+        
+        this.savePositionTimer = setTimeout(() => {
+            const rect = this.floatingContainer.getBoundingClientRect();
+            const position = {
+                left: rect.left,
+                top: rect.top
+            };
+            
+            chrome.storage.local.set({ 'yva_button_position': position });
+            console.log('保存按钮位置:', position);
+        }, 300); // 300ms防抖
+    }
+
+    async loadPosition() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['yva_button_position'], (result) => {
+                if (result.yva_button_position) {
+                    const pos = result.yva_button_position;
+                    // 确保位置在当前视窗范围内
+                    const maxX = window.innerWidth - 60; // 按钮宽度
+                    const maxY = window.innerHeight - 60; // 按钮高度
+                    
+                    const boundedX = Math.max(0, Math.min(pos.left, maxX));
+                    const boundedY = Math.max(0, Math.min(pos.top, maxY));
+                    
+                    this.floatingContainer.style.left = boundedX + 'px';
+                    this.floatingContainer.style.top = boundedY + 'px';
+                    
+                    console.log('加载按钮位置:', { left: boundedX, top: boundedY });
+                }
+                resolve();
+            });
+        });
     }
 
     showStatus() {
         if (this.statusDisplay) {
-            this.statusDisplay.style.display = 'block';
+            this.statusDisplay.classList.add('visible');
         }
     }
 
     hideStatus() {
-        if (this.statusDisplay && !this.isProcessing) {
-            this.statusDisplay.style.display = 'none';
+        console.log('hideStatus', this.statusDisplay);
+        if (this.statusDisplay) {
+            this.statusDisplay.classList.remove('visible');
         }
     }
 
@@ -244,8 +434,7 @@ class YouTubeVoiceAssistant {
         const spinner = this.floatingButton.querySelector('.yva-loading-spinner');
 
         statusText.textContent = message;
-        this.statusDisplay.className = `yva-status-display ${type}`;
-        this.statusDisplay.style.display = 'block';
+        this.statusDisplay.className = `yva-status-display ${type} visible`;
 
         // 更新按钮状态
         if (type === 'processing' || type === 'recording') {
@@ -258,11 +447,16 @@ class YouTubeVoiceAssistant {
             this.floatingButton.disabled = false;
         }
 
-        // 自动隐藏成功状态
-        if (type === 'success') {
-            setTimeout(() => {
+        // 清除之前的自动隐藏计时器
+        if (this.statusHideTimer) {
+            clearTimeout(this.statusHideTimer);
+        }
+
+        // 自动隐藏成功和信息状态
+        if (type === 'success' || type === 'info') {
+            this.statusHideTimer = setTimeout(() => {
                 this.hideStatus();
-            }, 2000);
+            }, type === 'success' ? 2000 : 3000);
         }
     }
 
@@ -309,9 +503,7 @@ class YouTubeVoiceAssistant {
         } finally {
             this.isProcessing = false;
             setTimeout(() => {
-                if (!this.isProcessing) {
-                    this.hideStatus();
-                }
+                this.hideStatus();
             }, 3000);
         }
     }
@@ -564,10 +756,28 @@ class YouTubeVoiceAssistant {
     }
 
     cleanup() {
-        if (this.floatingButton) {
-            this.floatingButton.remove();
-            this.floatingButton = null;
+        // 移除整个浮动容器
+        if (this.floatingContainer) {
+            this.floatingContainer.remove();
+            this.floatingContainer = null;
         }
+        
+        // 清除元素引用
+        this.floatingButton = null;
+        this.statusDisplay = null;
+        
+        // 清除状态隐藏计时器
+        if (this.statusHideTimer) {
+            clearTimeout(this.statusHideTimer);
+            this.statusHideTimer = null;
+        }
+        
+        // 清除位置保存计时器
+        if (this.savePositionTimer) {
+            clearTimeout(this.savePositionTimer);
+            this.savePositionTimer = null;
+        }
+        
         this.subtitlesData = null;
         this.manualSubtitle = null;
         this.currentVideoId = null;
@@ -578,9 +788,18 @@ class YouTubeVoiceAssistant {
 let voiceAssistant = null;
 
 function initVoiceAssistant() {
-    if (!voiceAssistant) {
-        voiceAssistant = new YouTubeVoiceAssistant();
+    // 清理已存在的实例
+    if (voiceAssistant) {
+        voiceAssistant.cleanup();
+        voiceAssistant = null;
     }
+    
+    // 移除任何残留的浮动容器
+    const existingContainers = document.querySelectorAll('.yva-floating-container');
+    existingContainers.forEach(container => container.remove());
+    
+    // 创建新实例
+    voiceAssistant = new YouTubeVoiceAssistant();
 }
 
 // 页面加载完成后初始化

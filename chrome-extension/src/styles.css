@@ -6,15 +6,16 @@
 /* 浮动容器 */
 .yva-floating-container {
     position: fixed;
-    top: 50%;
-    right: 20px;
-    transform: translateY(-50%);
+    top: 20px;
+    left: 75vw;
     z-index: 2147483647;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 10px;
     font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    pointer-events: none;
+    user-select: none;
 }
 
 /* 浮动按钮 */
@@ -31,20 +32,34 @@
     box-shadow: 
         0 4px 20px rgba(102, 126, 234, 0.4),
         0 2px 10px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
     position: relative;
     overflow: hidden;
+    transform: scale(1);
+    pointer-events: auto;
+    flex-shrink: 0;
+    user-select: none;
+    touch-action: none;
 }
 
 .yva-floating-button:hover {
-    transform: scale(1.1);
+    transform: scale(1.05);
     box-shadow: 
         0 6px 25px rgba(102, 126, 234, 0.5),
         0 4px 15px rgba(0, 0, 0, 0.15);
 }
 
 .yva-floating-button:active {
-    transform: scale(0.95);
+    transform: scale(0.98);
+}
+
+.yva-floating-button.dragging {
+    cursor: grabbing;
+    transform: scale(1.1);
+    box-shadow: 
+        0 8px 30px rgba(102, 126, 234, 0.6),
+        0 6px 20px rgba(0, 0, 0, 0.2);
+    z-index: 1;
 }
 
 .yva-floating-button:disabled {
@@ -93,9 +108,19 @@
     white-space: nowrap;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
-    position: relative;
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+    position: absolute;
+    top: 0;
+    right: 70px;
     max-width: 200px;
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateX(10px);
+}
+
+.yva-status-display.visible {
+    opacity: 1;
+    transform: translateX(0);
 }
 
 /* 状态类型 */
@@ -133,11 +158,9 @@
 /* 录音时的脉冲动画 */
 @keyframes yva-pulse {
     0%, 100% {
-        transform: scale(1);
         opacity: 1;
     }
     50% {
-        transform: scale(1.05);
         opacity: 0.8;
     }
 }
@@ -150,10 +173,7 @@
 /* 响应式设计 */
 @media (max-width: 768px) {
     .yva-floating-container {
-        right: 15px;
-        top: auto;
-        bottom: 20px;
-        transform: none;
+        /* 移动端保持当前位置，不强制重定位 */
     }
     
     .yva-floating-button {
@@ -170,6 +190,7 @@
         font-size: 12px;
         padding: 6px 12px;
         max-width: 150px;
+        right: 60px; /* 调整移动端状态显示位置 */
     }
 }
 
@@ -177,37 +198,38 @@
 .yva-status-display::after {
     content: '';
     position: absolute;
-    bottom: -5px;
-    right: 20px;
+    top: 50%;
+    right: -5px;
     width: 0;
     height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 5px solid rgba(0, 0, 0, 0.85);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 5px solid rgba(0, 0, 0, 0.85);
+    transform: translateY(-50%);
 }
 
 .yva-status-display.info::after {
-    border-top-color: rgba(102, 126, 234, 0.9);
+    border-left-color: rgba(102, 126, 234, 0.9);
 }
 
 .yva-status-display.recording::after {
-    border-top-color: rgba(255, 59, 48, 0.9);
+    border-left-color: rgba(255, 59, 48, 0.9);
 }
 
 .yva-status-display.processing::after {
-    border-top-color: rgba(255, 149, 0, 0.9);
+    border-left-color: rgba(255, 149, 0, 0.9);
 }
 
 .yva-status-display.playing::after {
-    border-top-color: rgba(52, 199, 89, 0.9);
+    border-left-color: rgba(52, 199, 89, 0.9);
 }
 
 .yva-status-display.success::after {
-    border-top-color: rgba(48, 209, 88, 0.9);
+    border-left-color: rgba(48, 209, 88, 0.9);
 }
 
 .yva-status-display.error::after {
-    border-top-color: rgba(255, 59, 48, 0.9);
+    border-left-color: rgba(255, 59, 48, 0.9);
 }
 
 /* 平滑进入动画 */
@@ -218,29 +240,15 @@
 @keyframes yva-fadeInSlide {
     from {
         opacity: 0;
-        transform: translateY(-50%) translateX(100px);
+        transform: translateY(-20px) scale(0.8);
     }
     to {
         opacity: 1;
-        transform: translateY(-50%) translateX(0);
+        transform: translateY(0) scale(1);
     }
 }
 
-/* 状态显示的进入动画 */
-.yva-status-display {
-    animation: yva-slideIn 0.3s ease-out;
-}
-
-@keyframes yva-slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
+/* 移除状态显示的进入动画，因为现在使用CSS transition */
 
 /* 防止与YouTube界面冲突 */
 .yva-floating-container,
@@ -252,10 +260,14 @@
 
 /* 确保在YouTube Theater模式下也能正常显示 */
 .yva-floating-container {
-    pointer-events: auto;
+    pointer-events: none;
 }
 
 .yva-floating-button {
+    pointer-events: auto;
+}
+
+.yva-status-display {
     pointer-events: auto;
 }
 
@@ -274,14 +286,18 @@
 /* 减少动画支持 */
 @media (prefers-reduced-motion: reduce) {
     .yva-floating-button,
-    .yva-status-display,
     .yva-floating-container {
         animation: none;
-        transition: none;
+        transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+    }
+    
+    .yva-status-display {
+        animation: none;
+        transition: opacity 0.1s ease-out, transform 0.1s ease-out;
     }
     
     .yva-floating-button:hover {
-        transform: none;
+        transform: scale(1.02);
     }
 }
 

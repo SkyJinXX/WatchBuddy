@@ -336,22 +336,12 @@
                         </label>
                     </div>
                     <div class="help-text">
-                        如果自动获取字幕失败，可以手动从 <a href="https://downsub.com" target="_blank">downsub.com</a> 下载SRT字幕文件并上传
+                        如果自动获取字幕失败，可以手动下载SRT字幕文件并上传,如<a href="https://downsub.com" target="_blank" id="downsubLink">downsub.com</a>等网站
                     </div>
                 </div>
 
-                <!-- 字幕文本预览/编辑 -->
-                <div class="input-group">
-                    <label for="subtitleText">字幕文本预览/编辑</label>
-                    <textarea id="subtitleText" placeholder="SRT字幕内容将显示在这里，您也可以直接粘贴字幕文本..." rows="6"></textarea>
-                    <div class="help-text">
-                        可以直接编辑字幕文本或粘贴从其他来源获取的SRT格式字幕
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-success" id="saveSubtitleBtn" style="flex: 1;">保存字幕</button>
-                    <button class="btn btn-danger" id="clearSubtitleBtn" style="flex: 1;">清除字幕</button>
+                <div style="margin-top: 10px;">
+                    <button class="btn btn-danger" id="clearSubtitleBtn">清除当前字幕</button>
                 </div>
             </div>
 

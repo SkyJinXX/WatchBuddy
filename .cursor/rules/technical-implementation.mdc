@@ -5,6 +5,31 @@ alwaysApply: true
 ---
 # Technical Implementation Details
 
+## Manual Subtitle Upload System (v2.0.0)
+
+### Implementation in [popup.js](mdc:chrome-extension/src/popup.js) and [content.js](mdc:chrome-extension/src/content.js)
+Provides manual subtitle upload as fallback when API fails:
+
+```javascript
+// Storage pattern for manual subtitles
+const storageKey = `manual_subtitle_${videoId}`
+chrome.storage.local.set({ [storageKey]: subtitleData })
+
+// Priority system: manual > API
+const manualSubtitles = await chrome.storage.local.get([`manual_subtitle_${videoId}`])
+if (manualSubtitles[`manual_subtitle_${videoId}`]) {
+    return manualSubtitles[`manual_subtitle_${videoId}`]
+}
+```
+
+### Features
+- **SRT Format Support**: Parses SRT files into transcript and timestamped arrays
+- **Drag & Drop Interface**: File upload with validation in [popup.html](mdc:chrome-extension/src/popup.html)
+- **Text Paste Support**: Direct textarea editing with real-time preview
+- **Per-Video Storage**: Independent subtitle storage with `manual_subtitle_${videoId}` keys
+- **30-Day Auto Cleanup**: Automatic cleanup of old manual subtitles
+- **Input Protection**: Prevents periodic updates from clearing user input
+
 ## Encryption System for Subtitle API
 
 ### Core Algorithm (implemented in [subtitle-extractor.js](mdc:chrome-extension/src/utils/subtitle-extractor.js))
@@ -92,26 +117,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 - `transcribe_audio`: Audio transcription (future feature)
 - `chat_with_openai`: AI conversation
 - `subtitles_ready`: Store subtitle data
-- `update_usage_stats`: Track usage
+- `upload_manual_subtitle`: Handle manual subtitle upload
+- `clear_manual_subtitle`: Clear manual subtitle data
 
-## OpenAI Integration
+## OpenAI Integration & Cache Optimization
 
-### Context Management Strategy (in [openai-client.js](mdc:chrome-extension/src/utils/openai-client.js))
+### Optimized Message Structure (in [openai-client.js](mdc:chrome-extension/src/utils/openai-client.js))
+Restructured for OpenAI prefix caching to reduce costs by 30-50%:
+
 ```javascript
-// System prompt construction
-let systemPrompt = `You are a helpful YouTube video assistant...`
-
-// Add full transcript (no character limits)
-if (currentVideoSubtitles.transcript) {
-    systemPrompt += `\n\nVideo Transcript:\n${currentVideoSubtitles.transcript}`
+// Static system message (cacheable)
+const staticSystemMessage = {
+    role: 'system',
+    content: `You are a helpful YouTube video assistant...
+    Video Title: ${videoTitle}
+    Video ID: ${videoId}
+    Full Transcript: ${transcript}`
 }
 
-// Add current position context (4-5 sentences before current time)
-if (videoContext?.currentTime) {
-    const relevantSubtitles = getRelevantSubtitlesAtTime(currentTime)
-    systemPrompt += `\n\nCurrent position: "${relevantSubtitles}"`
+// Dynamic context messages (per conversation turn)
+const dynamicContextMessage = {
+    role: 'system', 
+    content: `Current time: ${currentTime}s
+    Current context: "${relevantSubtitles}"`
 }
+
+// Message array: [static, dynamic1, user1, assistant1, dynamic2, user2, ...]
 ```
+
+### Context Management Strategy
+- **Static Content**: Video metadata and full transcript (enables caching)
+- **Dynamic Content**: Current time and relevant subtitles (inserted before each user message)
+- **Spoiler Prevention**: Only shows subtitles before current timestamp
+- **Temperature Setting**: Increased to 1.0 for more creative responses
 
 ### Dual Recording Strategy
 1. **Primary**: VAD-based smart recording (`processVoiceQuerySmart`)
@@ -128,14 +166,14 @@ chrome.storage.sync.get(['openai_api_key'])
 
 // Local storage for temporary data
 chrome.storage.local.set({ 
-    usage_stats: { total: 0, today: 0 },
-    conversation_history: []
+    conversation_history: [],
+    [`manual_subtitle_${videoId}`]: subtitleData
 })
 ```
 
 ### Automatic Cleanup
 - Conversation history: 7-day retention
-- Usage stats: Daily reset
+- Manual subtitles: 30-day retention
 - Periodic cleanup every hour
 
 ## Security Implementation
@@ -165,7 +203,7 @@ chrome.storage.local.set({
 
 ### Fallback Mechanisms
 - VAD failure → Traditional recording
-- Primary subtitle source → Alternative sources
+- API subtitle failure → Manual upload option
 - Network failure → Cached data
 - API rate limits → User notification
 
@@ -182,7 +220,13 @@ chrome.storage.local.set({
 - Limited conversation history
 
 ### Network Optimization
+- OpenAI prefix caching for cost reduction
 - Request batching where possible
 - Efficient header management
 - Response caching for repeated requests
+
+### UI Optimization
+- Input protection: Prevents clearing user content during updates
+- Reduced update frequency: Status updates every 5 seconds instead of 2
+- Focus detection: Skips updates when user is actively editing
 

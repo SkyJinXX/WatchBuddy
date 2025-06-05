@@ -103,26 +103,19 @@ async function loadSubtitleStatus() {
         const videoId = urlParams.get('v');
         
         if (videoId) {
+            // 更新downsub链接
+            updateDownsubLink(tab.url);
+            
             // 检查是否有手动上传的字幕
             const result = await chrome.storage.local.get([`manual_subtitle_${videoId}`]);
             const manualSubtitle = result[`manual_subtitle_${videoId}`];
             
-            const subtitleTextArea = document.getElementById('subtitleText');
-            
             if (manualSubtitle) {
                 console.log('找到已保存的字幕，videoId:', videoId, '内容长度:', manualSubtitle.content.length);
                 updateSubtitleStatus('✅ 已加载手动上传的字幕', 'loaded');
-                // 只有在文本框为空时才自动填充，避免覆盖用户正在编辑的内容
-                if (!subtitleTextArea.value.trim()) {
-                    subtitleTextArea.value = manualSubtitle.content;
-                    console.log('已自动填充字幕内容到文本框');
-                } else {
-                    console.log('文本框不为空，跳过自动填充');
-                }
             } else {
                 console.log('未找到已保存的字幕，videoId:', videoId);
                 updateSubtitleStatus('❌ 当前视频暂无可用字幕', 'empty');
-                // 不要自动清空文本框，用户可能正在输入或编辑
             }
         }
     } catch (error) {
@@ -140,28 +133,44 @@ function updateSubtitleStatus(message, type) {
 }
 
 /**
+ * 更新downsub链接
+ */
+function updateDownsubLink(youtubeUrl) {
+    const downsubLink = document.getElementById('downsubLink');
+    if (downsubLink && youtubeUrl && youtubeUrl.includes('youtube.com/watch')) {
+        // 对YouTube URL进行编码
+        const encodedUrl = encodeURIComponent(youtubeUrl);
+        // 生成downsub链接
+        const downsubUrl = `https://downsub.com/?url=${encodedUrl}`;
+        downsubLink.href = downsubUrl;
+        console.log('已更新downsub链接:', downsubUrl);
+    }
+}
+
+/**
  * 处理文件上传
  */
-function handleFileUpload(file) {
+async function handleFileUpload(file) {
     if (!file || !file.name.toLowerCase().endsWith('.srt')) {
         showStatus('请选择SRT格式的字幕文件', 'error');
         return;
     }
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         const content = e.target.result;
-        document.getElementById('subtitleText').value = content;
         document.getElementById('fileInputLabel').textContent = `📁 已选择: ${file.name}`;
-        showStatus('字幕文件读取成功，请点击"保存字幕"', 'success');
+        
+        // 自动保存字幕
+        await saveSubtitleContent(content);
     };
     reader.readAsText(file);
 }
 
 /**
- * 保存字幕
+ * 保存字幕内容
  */
-async function saveSubtitle() {
+async function saveSubtitleContent(subtitleContent) {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab || !tab.url || !tab.url.includes('youtube.com/watch')) {
@@ -171,15 +180,14 @@ async function saveSubtitle() {
 
         const urlParams = new URLSearchParams(tab.url.split('?')[1]);
         const videoId = urlParams.get('v');
-        const subtitleContent = document.getElementById('subtitleText').value.trim();
 
         if (!videoId) {
             showStatus('无法获取视频ID', 'error');
             return;
         }
 
-        if (!subtitleContent) {
-            showStatus('请输入字幕内容', 'error');
+        if (!subtitleContent || !subtitleContent.trim()) {
+            showStatus('字幕内容为空', 'error');
             return;
         }
 
@@ -192,7 +200,7 @@ async function saveSubtitle() {
         // 保存到本地存储
         const subtitleData = {
             videoId: videoId,
-            content: subtitleContent,
+            content: subtitleContent.trim(),
             timestamp: Date.now()
         };
 
@@ -208,7 +216,7 @@ async function saveSubtitle() {
         });
 
         updateSubtitleStatus('✅ 字幕保存成功', 'loaded');
-        showStatus('字幕保存成功！可以开始语音对话了', 'success');
+        showStatus('字幕上传并保存成功！可以开始语音对话了', 'success');
         
         console.log('字幕保存成功，videoId:', videoId, '内容长度:', subtitleContent.length);
 
@@ -239,8 +247,7 @@ async function clearSubtitle() {
             // 从存储中删除
             await chrome.storage.local.remove([`manual_subtitle_${videoId}`]);
             
-            // 清空文本框
-            document.getElementById('subtitleText').value = '';
+            // 重置文件选择标签
             document.getElementById('fileInputLabel').textContent = '📁 点击选择SRT文件或拖拽到此处';
             
             // 通知content script字幕已清除
@@ -435,7 +442,6 @@ function bindEventListeners() {
     document.getElementById('helpBtn').addEventListener('click', openHelp);
     
     // 字幕相关按钮
-    document.getElementById('saveSubtitleBtn').addEventListener('click', saveSubtitle);
     document.getElementById('clearSubtitleBtn').addEventListener('click', clearSubtitle);
     
     // 文件上传
@@ -448,13 +454,7 @@ function bindEventListeners() {
         }
     });
     
-    // 监听文本框输入，提示用户保存
-    const subtitleTextArea = document.getElementById('subtitleText');
-    subtitleTextArea.addEventListener('input', function() {
-        if (this.value.trim()) {
-            updateSubtitleStatus('⚠️ 字幕内容已修改，请点击保存', 'empty');
-        }
-    });
+
     
     // 拖拽上传
     fileLabel.addEventListener('dragover', function(e) {

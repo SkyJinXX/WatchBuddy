@@ -11,9 +11,11 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 ## Core Features
 - **Voice Activity Detection (VAD)**: Intelligent voice recording that automatically starts/stops based on speech detection
 - **YouTube Subtitle Extraction**: Fetches and processes video subtitles from YouTube using encrypted API calls
+- **Manual Subtitle Upload**: Fallback option for manual SRT file upload when API fails
 - **AI-Powered Q&A**: Uses OpenAI API to answer questions about video content with full subtitle context
 - **Text-to-Speech**: Converts AI responses to audio for hands-free interaction
 - **Smart Context Management**: Provides relevant subtitle context without spoilers
+- **OpenAI Cache Optimization**: Reduces token costs by 30-50% through prefix caching
 
 ## Project Structure
 
@@ -29,14 +31,14 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 - [manifest.json](mdc:chrome-extension/manifest.json) - Extension manifest with permissions and configuration
 - [src/content.js](mdc:chrome-extension/src/content.js) - Main content script injected into YouTube pages
 - [src/background.js](mdc:chrome-extension/src/background.js) - Service worker handling API requests and message passing
-- [src/popup.html](mdc:chrome-extension/src/popup.html) - Extension popup interface
-- [src/popup.js](mdc:chrome-extension/src/popup.js) - Popup logic and settings management
+- [src/popup.html](mdc:chrome-extension/src/popup.html) - Extension popup interface with subtitle management
+- [src/popup.js](mdc:chrome-extension/src/popup.js) - Popup logic, settings, and manual subtitle handling
 - [src/styles.css](mdc:chrome-extension/src/styles.css) - UI styling for all components
 
 ### Utility Libraries (`chrome-extension/src/utils/`)
 - [subtitle-extractor.js](mdc:chrome-extension/src/utils/subtitle-extractor.js) - YouTube subtitle fetching and encryption
 - [voice-recorder.js](mdc:chrome-extension/src/utils/voice-recorder.js) - VAD-based smart voice recording
-- [openai-client.js](mdc:chrome-extension/src/utils/openai-client.js) - OpenAI API integration with dual recording methods
+- [openai-client.js](mdc:chrome-extension/src/utils/openai-client.js) - OpenAI API integration with cache optimization
 - [crypto-js.min.js](mdc:chrome-extension/src/utils/crypto-js.min.js) - Cryptographic functions for subtitle API
 - [ort.js](mdc:chrome-extension/src/utils/ort.js) - ONNX Runtime for VAD processing (3.8MB)
 - [vad-web.js](mdc:chrome-extension/src/utils/vad-web.js) - Voice Activity Detection library
@@ -58,16 +60,16 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 - **Chrome Extension Manifest V3**: Latest extension architecture with service workers
 - **Voice Activity Detection**: @ricky0123/vad-web library with ONNX Runtime
 - **Cryptography**: CryptoJS for subtitle API encryption (AES-256-CBC)
-- **OpenAI API**: GPT-4o-mini for intelligent responses
+- **OpenAI API**: GPT-4o-mini with prefix caching optimization
 - **Web Speech API**: Text-to-Speech functionality
 
 ### Key Technical Components
 
-#### 1. Subtitle Extraction System
-- Replicates Tampermonkey script encryption for downsub.com API
-- AES-256-CBC encryption with random salt and IV
-- Base64 encoding for API communication
-- CORS handling through background script proxy
+#### 1. Subtitle System (Dual-Source)
+- **Primary**: Replicates Tampermonkey script encryption for downsub.com API
+- **Fallback**: Manual SRT file upload via drag-and-drop interface
+- **Priority**: Manual uploads override API-retrieved subtitles
+- **Storage**: Per-video storage with 30-day auto-cleanup
 
 #### 2. Voice Activity Detection (VAD)
 - Real-time speech detection using neural networks
@@ -75,11 +77,11 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 - Fallback to traditional 5-second recording
 - Smart audio preprocessing and format conversion
 
-#### 3. Context Management
-- Full transcript storage without character limits
-- Smart context extraction (4-5 sentences before current time)
-- Timestamp-based subtitle filtering
-- Spoiler prevention for future content
+#### 3. OpenAI Integration (v2.0.0)
+- **Optimized Message Structure**: Static + dynamic context separation
+- **Prefix Caching**: 30-50% cost reduction through cacheable static content
+- **Temperature**: Set to 1.0 for more creative responses
+- **Context Management**: Full transcript + current position without spoilers
 
 #### 4. Security and Permissions
 - Local library loading for Chrome extension compliance
@@ -96,14 +98,30 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 
 ### Error Handling Strategy
 - Comprehensive try-catch blocks
-- Fallback mechanisms (VAD → traditional recording)
+- Fallback mechanisms (VAD → traditional recording, API → manual upload)
 - Detailed console logging for debugging
 - User-friendly error messages
 
 ### Storage Management
 - Chrome sync storage for settings and API keys
-- Local storage for conversation history and usage stats
-- Automatic cleanup of expired data
+- Local storage for conversation history and manual subtitles
+- Automatic cleanup of expired data (7-day conversations, 30-day subtitles)
+
+## User Workflow (v2.0.0)
+
+### Standard Operation
+1. User visits YouTube video
+2. Extension automatically attempts subtitle extraction
+3. If successful, user can immediately use voice chat
+4. AI responds with context from auto-retrieved subtitles
+
+### Manual Subtitle Fallback
+1. If auto-extraction fails, user sees "📝 字幕管理" section in popup
+2. User visits downsub.com to download SRT file
+3. User uploads SRT via drag-and-drop or file selection
+4. User can edit/preview subtitles in textarea
+5. User saves subtitles and continues with voice chat
+6. AI responds with context from manually uploaded subtitles
 
 ## Common Modification Areas
 
@@ -117,17 +135,21 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 1. **Encryption Problems**: Use [test-encryption-debug.html](mdc:chrome-extension/test-encryption-debug.html)
 2. **VAD Issues**: Test with [test-vad.html](mdc:chrome-extension/test-vad.html)
 3. **Subtitle Extraction**: Debug with [test-subtitle-debug.html](mdc:chrome-extension/test-subtitle-debug.html)
-4. **API Integration**: Check [background.js](mdc:chrome-extension/src/background.js) logs
+4. **Manual Upload**: Check [popup.js](mdc:chrome-extension/src/popup.js) file handling logic
+5. **API Integration**: Check [background.js](mdc:chrome-extension/src/background.js) logs
 
 ### Configuration Points
 - VAD sensitivity: `positiveSpeechThreshold`, `negativeSpeechThreshold`
 - OpenAI model: Currently using `gpt-4o-mini`
+- OpenAI temperature: Set to 1.0 for creative responses
 - Subtitle context range: Default 4-5 sentences before current time
 - Recording timeout: Fallback to 5-second recording
+- Storage cleanup: 7-day conversations, 30-day manual subtitles
 
 ## Security Considerations
 - All external libraries are downloaded locally for security compliance
 - API keys stored securely in Chrome storage
 - No external script loading in content scripts
 - CORS handled through background proxy
+- Manual subtitle data stored locally only
 

@@ -694,7 +694,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             timings.total = performance.now() - startTime;
             
             this.logTimingStats(timings, 'Smart Voice Query (Separated)');
-            onStatusUpdate(`完成 (总耗时: ${Math.round(timings.total)}ms)`, 'success');
+            onStatusUpdate(`完成`, 'success');
             
             return {
                 userQuestion: result.transcript,
@@ -763,7 +763,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             timings.total = performance.now() - startTime;
             
             this.logTimingStats(timings, 'Traditional Voice Query (Separated)');
-            onStatusUpdate(`完成 (总耗时: ${Math.round(timings.total)}ms)`, 'success');
+            onStatusUpdate(`完成`, 'success');
             
             return {
                 userQuestion: result.transcript,
