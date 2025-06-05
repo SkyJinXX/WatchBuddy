@@ -1,8 +1,8 @@
-# 🎤 YouTube Voice Assistant Chrome Extension
+# 🎤 WatchBuddy - YouTube Watching Assistant Chrome Extension
 
 An intelligent Chrome browser extension that provides AI-powered voice assistance for YouTube learners. Users can pause while watching YouTube videos and ask questions through voice input. The AI responds intelligently based on video content and context, helping users better understand the learning material.
 
-![YouTube Voice Assistant](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![WatchBuddy](https://img.shields.io/badge/version-0.5.0-blue.svg)
 ![Chrome Extension](https://img.shields.io/badge/platform-Chrome%20Extension-green.svg)
 ![OpenAI](https://img.shields.io/badge/powered%20by-OpenAI-orange.svg)
 ![GPT-4o](https://img.shields.io/badge/model-GPT--4o--mini--audio--preview-red.svg)

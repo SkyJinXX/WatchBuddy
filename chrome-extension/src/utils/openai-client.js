@@ -266,10 +266,100 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
+     * 调试功能：保存录音并创建播放界面
+     */
+    debugSaveRecording(audioBlob) {
+        try {
+            // 创建blob URL用于播放
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            // 记录录音信息
+            console.log('🎵 录音调试信息 (发送给转录API前):');
+            console.log('- 文件大小:', (audioBlob.size / 1024).toFixed(2), 'KB');
+            console.log('- 文件类型:', audioBlob.type);
+            console.log('- 播放URL:', audioUrl);
+            
+            // 移除之前的调试播放器（如果存在）
+            const existingPlayer = document.getElementById('voice-debug-player');
+            if (existingPlayer) {
+                URL.revokeObjectURL(existingPlayer.audioUrl); // 释放之前的URL
+                existingPlayer.remove();
+            }
+            
+            // 创建播放界面
+            const debugContainer = document.createElement('div');
+            debugContainer.id = 'voice-debug-player';
+            debugContainer.audioUrl = audioUrl; // 保存URL用于清理
+            debugContainer.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 12px;
+                border-radius: 8px;
+                z-index: 10000;
+                font-family: Arial, sans-serif;
+                font-size: 13px;
+                max-width: 350px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                border: 1px solid #333;
+            `;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            debugContainer.innerHTML = `
+                <div style="margin-bottom: 8px; font-weight: bold; color: #4CAF50;">🎵 录音调试 (转录前)</div>
+                <div style="margin-bottom: 5px; color: #999;">时间: ${timestamp}</div>
+                <div style="margin-bottom: 5px; color: #ccc;">大小: ${(audioBlob.size / 1024).toFixed(2)} KB</div>
+                <div style="margin-bottom: 8px; color: #ccc;">类型: ${audioBlob.type}</div>
+                <audio controls style="width: 100%; margin-bottom: 8px;">
+                    <source src="${audioUrl}" type="${audioBlob.type}">
+                    您的浏览器不支持音频播放
+                </audio>
+                <div style="text-align: center;">
+                    <button id="debug-close-btn" style="background: #f44336; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 8px;">关闭</button>
+                    <button id="debug-download-btn" style="background: #2196F3; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">下载</button>
+                </div>
+            `;
+            
+            // 添加到页面
+            document.body.appendChild(debugContainer);
+            
+            // 关闭按钮事件
+            document.getElementById('debug-close-btn').addEventListener('click', () => {
+                URL.revokeObjectURL(audioUrl); // 释放内存
+                debugContainer.remove();
+            });
+            
+            // 下载按钮事件
+            document.getElementById('debug-download-btn').addEventListener('click', () => {
+                const link = document.createElement('a');
+                link.href = audioUrl;
+                link.download = `recording_transcribe_${timestamp.replace(/:/g, '-')}.wav`;
+                link.click();
+            });
+            
+            // 5分钟后自动清理
+            setTimeout(() => {
+                if (document.getElementById('voice-debug-player')) {
+                    URL.revokeObjectURL(audioUrl);
+                    debugContainer.remove();
+                }
+            }, 5 * 60 * 1000);
+            
+        } catch (error) {
+            console.error('OpenAI: 创建调试播放器失败:', error);
+        }
+    }
+
+    /**
      * 音频转录 - 使用 gpt-4o-mini-transcribe
      */
     async transcribeAudio(audioBlob, options = {}) {
         try {
+            // 调试功能：保存录音用于播放
+            this.debugSaveRecording(audioBlob);
+            
             const formData = new FormData();
             formData.append('file', audioBlob, 'audio.wav');
             formData.append('model', 'gpt-4o-mini-transcribe');
@@ -520,7 +610,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
                 timeoutId = setTimeout(() => {
                     if (recorder && recorder.recording) {
                         console.log('Voice: 录音超时，正在清理资源...');
-                        recorder.destroy(); // 确保释放麦克风
+                        recorder.forceDestroy(); // 超时时强制释放麦克风
                         reject(new Error('录音超时，请重试'));
                     }
                 }, 30000);
@@ -534,7 +624,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
                 // 确保清理录音器资源
                 if (recorder) {
                     try {
-                        recorder.destroy();
+                        recorder.forceDestroy();
                     } catch (destroyError) {
                         console.error('Voice: 清理录音器失败:', destroyError);
                     }

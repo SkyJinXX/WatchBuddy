@@ -13,6 +13,8 @@ class SmartVoiceRecorder {
         this.stream = null;
         this.microphoneReady = false; // 麦克风是否已准备好
         this.hasNotifiedMicReady = false; // 是否已通知用户麦克风准备好
+        this.vadInitialized = false; // VAD是否已初始化
+        this.isPaused = false; // VAD是否处于暂停状态
     }
 
     /**
@@ -52,13 +54,15 @@ class SmartVoiceRecorder {
                 positiveSpeechThreshold: 0.5,  // 语音检测阈值
                 negativeSpeechThreshold: 0.35, // 静音检测阈值
                 minSpeechFrames: 16,            // 最小语音帧数
-                preSpeechPadFrames: 8,         // 语音前填充帧数
+                preSpeechPadFrames: 16,         // 语音前填充帧数
                 redemptionFrames: 32,           // 救赎帧数（避免误判）
                 frameSamples: 512,            // 每帧样本数
                 submitUserSpeechOnPause: false // 暂停时不提交音频
             });
 
             console.log('Voice: VAD初始化成功');
+            this.vadInitialized = true;
+            this.isPaused = false;
             return true;
 
         } catch (error) {
@@ -77,21 +81,30 @@ class SmartVoiceRecorder {
                 return;
             }
 
-            // 确保VAD已初始化
             this.updateStatus('正在启动...', 'processing');
-            if (!this.vadInstance) {
-                await this.initialize();
+            
+            // 如果VAD已初始化且只是暂停状态，直接恢复
+            if (this.vadInitialized && this.isPaused && this.vadInstance) {
+                console.log('Voice: 恢复VAD录音（避免1.0~1.7秒音频丢失）');
+                this.vadInstance.start();
+                this.isPaused = false;
+            } else {
+                // 首次初始化或VAD实例丢失，重新初始化
+                console.log('Voice: 首次初始化VAD');
+                if (!this.vadInstance) {
+                    await this.initialize();
+                }
+                // 初始化后必须调用start()开始监听
+                this.vadInstance.start();
+                this.isPaused = false;
             }
 
-            
-            // 重置状态
+            // 重置录音状态（但保持VAD实例）
             this.microphoneReady = false;
             this.hasNotifiedMicReady = false;
-            
-            // 启动VAD
-            this.vadInstance.start();
             this.audioChunks = [];
             this.isRecording = true;
+            
             console.log('Voice: 智能录音已启动，等待麦克风准备就绪...');
 
         } catch (error) {
@@ -101,37 +114,7 @@ class SmartVoiceRecorder {
         }
     }
 
-    /**
-     * 停止录音
-     */
-    async stopRecording() {
-        try {
-            if (!this.isRecording) {
-                return null;
-            }
 
-            this.isRecording = false;
-            
-            // 重置麦克风状态
-            this.microphoneReady = false;
-            this.hasNotifiedMicReady = false;
-
-            // 完全销毁VAD实例，释放麦克风权限
-            if (this.vadInstance) {
-                this.vadInstance.destroy();
-                this.vadInstance = null;
-            }
-
-            this.updateStatus('录音已停止', 'info');
-            console.log('Voice: 录音已手动停止，麦克风权限已释放');
-
-            return null; // 手动停止返回null
-
-        } catch (error) {
-            console.error('Voice: 停止录音失败:', error);
-            throw error;
-        }
-    }
 
     /**
      * 处理麦克风准备就绪事件
@@ -172,11 +155,11 @@ class SmartVoiceRecorder {
             this.microphoneReady = false;
             this.hasNotifiedMicReady = false;
             
-            // 完全销毁VAD实例，释放麦克风权限
+            // 暂停VAD而不是销毁，保持麦克风权限和音频上下文
             if (this.vadInstance) {
-                this.vadInstance.destroy();
-                this.vadInstance = null;
-                console.log('Voice: VAD实例已销毁，麦克风权限已释放');
+                this.vadInstance.pause();
+                this.isPaused = true;
+                console.log('Voice: VAD已暂停（保持音频上下文，避免1.0~1.7秒丢失）');
             }
 
             console.log('Voice: 语音录制完成，音频长度:', vadAudio.length, '样本');
@@ -191,10 +174,17 @@ class SmartVoiceRecorder {
             console.error('Voice: 处理语音结束失败:', error);
             this.updateStatus('处理录音失败: ' + error.message, 'error');
             
-            // 即使出错也要释放麦克风和重置状态
+            // 出错时也暂停而不是销毁
             if (this.vadInstance) {
-                this.vadInstance.destroy();
-                this.vadInstance = null;
+                try {
+                    this.vadInstance.pause();
+                    this.isPaused = true;
+                } catch (pauseError) {
+                    console.error('Voice: 暂停VAD失败，尝试销毁:', pauseError);
+                    this.vadInstance.destroy();
+                    this.vadInstance = null;
+                    this.vadInitialized = false;
+                }
             }
             this.microphoneReady = false;
             this.hasNotifiedMicReady = false;
@@ -202,6 +192,8 @@ class SmartVoiceRecorder {
             throw error;
         }
     }
+
+
 
     /**
      * 将Float32Array转换为音频Blob
@@ -284,7 +276,27 @@ class SmartVoiceRecorder {
     }
 
     /**
-     * 清理资源
+     * 完全销毁VAD实例（用于页面卸载或真正需要释放麦克风时）
+     */
+    forceDestroy() {
+        if (this.vadInstance) {
+            this.vadInstance.destroy();
+            this.vadInstance = null;
+            console.log('Voice: VAD实例已强制销毁，麦克风权限已释放');
+        }
+        
+        // 重置所有状态
+        this.isRecording = false;
+        this.microphoneReady = false;
+        this.hasNotifiedMicReady = false;
+        this.vadInitialized = false;
+        this.isPaused = false;
+        this.audioChunks = [];
+        console.log('Voice: 所有资源已强制清理');
+    }
+
+    /**
+     * 清理资源（向后兼容）
      */
     destroy() {
         if (this.vadInstance) {
@@ -297,6 +309,8 @@ class SmartVoiceRecorder {
         this.isRecording = false;
         this.microphoneReady = false;
         this.hasNotifiedMicReady = false;
+        this.vadInitialized = false;
+        this.isPaused = false;
         this.audioChunks = [];
         console.log('Voice: 资源已清理，麦克风权限已释放');
     }

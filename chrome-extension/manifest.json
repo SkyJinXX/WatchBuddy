@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "YouTube Voice Assistant",
-  "version": "1.0.0",
+  "name": "WatchBuddy - YouTube Watching Assistant",
+  "version": "0.5.0",
   "description": "AI语音助手，帮助理解YouTube视频内容。支持语音提问和智能回答。",
   "permissions": [
     "activeTab",
