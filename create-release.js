@@ -4,7 +4,9 @@ const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 
-const version = "0.5.0";
+// 从manifest.json读取版本号
+const manifest = JSON.parse(fs.readFileSync('chrome-extension/manifest.json', 'utf8'));
+const version = manifest.version;
 const outputDir = 'releases';
 const zipName = `watchbuddy-v${version}.zip`;
 
@@ -71,7 +73,12 @@ if (fs.existsSync('README.md')) {
     console.log('✅ Adding: README.md');
 }
 
-if (fs.existsSync('RELEASE_NOTES.md')) {
+// 查找对应版本的发布说明文件
+const releaseNotesFile = `RELEASE_NOTES_${version}.md`;
+if (fs.existsSync(releaseNotesFile)) {
+    archive.file(releaseNotesFile, { name: 'RELEASE_NOTES.md' });
+    console.log(`✅ Adding: ${releaseNotesFile} as RELEASE_NOTES.md`);
+} else if (fs.existsSync('RELEASE_NOTES.md')) {
     archive.file('RELEASE_NOTES.md', { name: 'RELEASE_NOTES.md' });
     console.log('✅ Adding: RELEASE_NOTES.md');
 }
