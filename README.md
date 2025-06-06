@@ -113,12 +113,13 @@
 - ✅ **API key stored locally** on your device only
 - ✅ **Voice recordings** processed temporarily and not stored
 - ✅ **Conversation history** kept locally with automatic cleanup
-- ✅ **No personal data** collected or transmitted
+- ✅ **Anonymous usage analytics** only - no personal data collected
 
-### What We Access
-- Current YouTube video information (title, timestamp)
-- Video subtitles for context
-- Your voice input when you click the microphone
+### Analytics & Improvement
+- ✅ **Anonymous usage statistics** help improve the extension
+- ✅ **No personal identification** - only general usage patterns
+- ✅ **Opt-out available** in extension settings
+- ✅ **Full transparency** - see our [Privacy Policy](https://skyjinxx.github.io/WatchBuddyPrivacyPolicy)
 
 ---
 
