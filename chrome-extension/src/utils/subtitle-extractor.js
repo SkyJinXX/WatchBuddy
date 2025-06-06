@@ -66,10 +66,10 @@ class SubtitleExtractor {
      * 加密数据 - 强制生成IV和salt以匹配工作格式
      */
     _encode(payload, options) {
-        console.log('SubtitleExtractor: _encode called with payload:', payload, 'type:', typeof payload);
+        Logger.log('SubtitleExtractor: _encode called with payload:', payload, 'type:', typeof payload);
         
         if (!payload) {
-            console.log('SubtitleExtractor: payload为空，返回false');
+            Logger.log('SubtitleExtractor: payload为空，返回false');
             return false;
         }
 
@@ -78,8 +78,8 @@ class SubtitleExtractor {
             const salt = CryptoJS.lib.WordArray.random(64/8);
             const iv = CryptoJS.lib.WordArray.random(128/8);
             
-            console.log('SubtitleExtractor: 生成 salt:', salt.toString());
-            console.log('SubtitleExtractor: 生成 iv:', iv.toString());
+            Logger.log('SubtitleExtractor: 生成 salt:', salt.toString());
+            Logger.log('SubtitleExtractor: 生成 iv:', iv.toString());
             
             const encrypted = CryptoJS.AES.encrypt(JSON.stringify(payload), options || this.SECRET_KEY, {
                 iv: iv,
@@ -88,14 +88,14 @@ class SubtitleExtractor {
             });
             
             const result = encrypted.toString();
-            console.log('SubtitleExtractor: AES加密结果长度:', result.length);
+            Logger.log('SubtitleExtractor: AES加密结果长度:', result.length);
             
             const finalResult = this._toBase64(result).trim();
-            console.log('SubtitleExtractor: 最终加密结果长度:', finalResult.length);
+            Logger.log('SubtitleExtractor: 最终加密结果长度:', finalResult.length);
             
             return finalResult;
         } catch (error) {
-            console.error('SubtitleExtractor: 加密过程出错:', error);
+            Logger.error('SubtitleExtractor: 加密过程出错:', error);
             return false;
         }
     }
@@ -118,13 +118,13 @@ class SubtitleExtractor {
      * 生成请求数据 - 完全照抄Tampermonkey的_generateData函数
      */
     _generateData(videoId) {
-        console.log('SubtitleExtractor: _generateData called with videoId:', videoId, 'type:', typeof videoId);
+        Logger.log('SubtitleExtractor: _generateData called with videoId:', videoId, 'type:', typeof videoId);
         
         const url = `https://www.youtube.com/watch?v=${videoId}`;
         let id = videoId;
         
-        console.log('SubtitleExtractor: 构建URL:', url);
-        console.log('SubtitleExtractor: 加密前的videoId:', id);
+        Logger.log('SubtitleExtractor: 构建URL:', url);
+        Logger.log('SubtitleExtractor: 加密前的videoId:', id);
         
         return {
             state: 99,
@@ -149,7 +149,7 @@ class SubtitleExtractor {
                 ff.enc_url = result.subtitles[i].url;
                 
                 // 输出解码后的原始YouTube URL，这是真正的字幕内容URL
-                console.log('SubtitleExtractor: 解码后的原始YouTube字幕URL:', ff.url);
+                Logger.log('SubtitleExtractor: 解码后的原始YouTube字幕URL:', ff.url);
                 
                 ff.download = {};
                 const params = new URLSearchParams({
@@ -237,13 +237,13 @@ class SubtitleExtractor {
         }
 
         try {
-            console.log('SubtitleExtractor: 视频ID:', videoId);
+            Logger.log('SubtitleExtractor: 视频ID:', videoId);
             
             const data = this._generateData(videoId);
-            console.log('SubtitleExtractor: 生成的数据:', data);
+            Logger.log('SubtitleExtractor: 生成的数据:', data);
             
             const url = `${this.API}${data.id}`;
-            console.log('SubtitleExtractor: 请求URL:', url);
+            Logger.log('SubtitleExtractor: 请求URL:', url);
             
             // 完全使用Tampermonkey的headers，但修正CORS origin
             const headersList = {
@@ -279,14 +279,14 @@ class SubtitleExtractor {
                 });
             });
 
-            console.log('SubtitleExtractor: 原始API响应:', response);
+            Logger.log('SubtitleExtractor: 原始API响应:', response);
             const decodedResult = this._decodeArray(response);
-            console.log('SubtitleExtractor: 解码后结果:', decodedResult);
+            Logger.log('SubtitleExtractor: 解码后结果:', decodedResult);
             
             return decodedResult;
 
         } catch (error) {
-            console.error('Error fetching subtitles:', error);
+            Logger.error('Error fetching subtitles:', error);
             throw error;
         }
     }
@@ -298,7 +298,7 @@ class SubtitleExtractor {
         try {
             // 首先尝试使用原始的YouTube URL
             if (subtitle.youtube_url) {
-                console.log('SubtitleExtractor: 尝试直接从YouTube下载:', subtitle.youtube_url);
+                Logger.log('SubtitleExtractor: 尝试直接从YouTube下载:', subtitle.youtube_url);
                 
                 try {
                     const response = await new Promise((resolve, reject) => {
@@ -316,11 +316,11 @@ class SubtitleExtractor {
                         });
                     });
 
-                    console.log('SubtitleExtractor: 直接从YouTube下载成功');
+                    Logger.log('SubtitleExtractor: 直接从YouTube下载成功');
                     return response;
                     
                 } catch (youtubeError) {
-                    console.warn('SubtitleExtractor: YouTube直接下载失败，尝试代理URL:', youtubeError.message);
+                    Logger.warn('SubtitleExtractor: YouTube直接下载失败，尝试代理URL:', youtubeError.message);
                 }
             }
             
@@ -339,7 +339,7 @@ class SubtitleExtractor {
                     break;
             }
             
-            console.log('SubtitleExtractor: 使用代理URL下载:', downloadUrl);
+            Logger.log('SubtitleExtractor: 使用代理URL下载:', downloadUrl);
             
             // 通过background script下载字幕内容
             const response = await new Promise((resolve, reject) => {
@@ -359,7 +359,7 @@ class SubtitleExtractor {
 
             return response;
         } catch (error) {
-            console.error('Error downloading subtitle:', error);
+            Logger.error('Error downloading subtitle:', error);
             throw error;
         }
     }
@@ -430,11 +430,11 @@ class SubtitleExtractor {
                 }
             }
             
-            console.log(`SubtitleExtractor: 解析XML字幕成功，共${subtitles.length}条字幕`);
+            Logger.log(`SubtitleExtractor: 解析XML字幕成功，共${subtitles.length}条字幕`);
             return subtitles;
             
         } catch (error) {
-            console.error('SubtitleExtractor: XML解析失败:', error);
+            Logger.error('SubtitleExtractor: XML解析失败:', error);
             // 如果XML解析失败，尝试作为SRT解析
             return this.parseSRTToTimestamps(xmlContent);
         }
@@ -496,12 +496,12 @@ class SubtitleExtractor {
                 throw new Error('No subtitles available');
             }
             
-            console.log('SubtitleExtractor: 找到字幕:', englishSubtitle.name, englishSubtitle.code);
+            Logger.log('SubtitleExtractor: 找到字幕:', englishSubtitle.name, englishSubtitle.code);
             
             // 下载字幕内容
             const content = await this.downloadSubtitleContent(englishSubtitle, 'raw');
-            console.log('SubtitleExtractor: 字幕内容长度:', content.length);
-            console.log('SubtitleExtractor: 字幕内容预览:', content.substring(0, 500) + '...');
+            Logger.log('SubtitleExtractor: 字幕内容长度:', content.length);
+            Logger.log('SubtitleExtractor: 字幕内容预览:', content.substring(0, 500) + '...');
             
             return {
                 subtitle: englishSubtitle,
@@ -509,7 +509,7 @@ class SubtitleExtractor {
             };
             
         } catch (error) {
-            console.error('Error getting English subtitle:', error);
+            Logger.error('Error getting English subtitle:', error);
             throw error;
         }
     }

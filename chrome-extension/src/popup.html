@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube语音助手</title>
+    <title>YouTube Watching Assistant</title>
     <style>
         * {
             margin: 0;
@@ -152,6 +152,34 @@
             margin-bottom: 15px;
         }
 
+        #statusMessage {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            min-width: 200px;
+            max-width: calc(100% - 40px);
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: slideDown 0.3s ease-out;
+            word-wrap: break-word;
+            word-break: break-word;
+            line-height: 1.4;
+            white-space: normal;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -10px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
         .status.success {
             background: #d4edda;
             color: #155724;
@@ -280,87 +308,179 @@
             border-color: #667eea;
             background: #e6f3ff;
         }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 12px;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+
+        .setting-info {
+            flex: 1;
+        }
+
+        .setting-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .setting-description {
+            font-size: 11px;
+            color: #666;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎤 YouTube语音助手</h1>
-            <p>AI智能语音问答，提升学习效率</p>
+            <h1>🎤 WatchBuddy</h1>
+            <p>AI-powered voice Q&A for enhanced learning</p>
         </div>
 
         <div class="content">
-            <!-- 当前页面状态 -->
+            <!-- Current Page Status -->
             <div class="section">
                 <div id="currentPageStatus" class="current-page" style="display: none;">
-                    <div class="current-page-title">当前页面</div>
-                    <div class="current-page-url" id="currentPageUrl">检测中...</div>
+                    <div class="current-page-title">Current Page</div>
+                    <div class="current-page-url" id="currentPageUrl">Detecting...</div>
                 </div>
             </div>
 
-            <!-- API配置 -->
+            <!-- API Configuration -->
             <div class="section">
-                <h3>🔧 API配置</h3>
+                <h3>🔧 API Configuration</h3>
                 <div class="input-group">
-                    <label for="apiKey">OpenAI API密钥</label>
+                    <label for="apiKey">OpenAI API Key</label>
                     <div class="input-wrapper">
                         <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
-                        <button type="button" class="toggle-password" id="togglePasswordBtn">显示</button>
+                        <button type="button" class="toggle-password" id="togglePasswordBtn">Show</button>
                     </div>
                     <div class="help-text">
-                        需要有效的OpenAI API密钥才能使用语音功能。<br>
-                        获取密钥：<a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>
+                        A valid OpenAI API key is required for voice features.<br>
+                        Get your key: <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>
                     </div>
                 </div>
-                <button class="btn" id="saveApiKeyBtn">保存配置</button>
+                <button class="btn" id="saveApiKeyBtn">Save Configuration</button>
+            </div>
+
+            <!-- Voice Settings -->
+            <div class="section">
+                <h3>🎙️ Voice Settings</h3>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <div class="setting-title">Enhanced Voice Mode</div>
+                        <div class="setting-description">
+                            Keeps microphone ready between conversations for faster and more accurate recognition. 
+                            Browser may show "recording" indicator, but audio is paused between uses.
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enhancedVoiceMode">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
             </div>
 
             <div class="divider"></div>
 
-            <!-- 字幕管理 -->
+            <!-- Subtitle Management -->
             <div class="section" id="subtitleSection" style="display: none;">
-                <h3>📝 字幕管理</h3>
+                <h3>📝 Subtitle Management</h3>
                 
-                <!-- 字幕状态显示 -->
+                <!-- Subtitle Status Display -->
                 <div id="subtitleStatus" class="subtitle-status empty">
-                    ❌ 当前视频暂无可用字幕
+                    ❌ No subtitles available for current video
                 </div>
 
-                <!-- 手动上传字幕 -->
+                <!-- Manual Subtitle Upload -->
                 <div class="input-group">
-                    <label>手动上传SRT字幕文件</label>
+                    <label>Manual SRT Subtitle Upload</label>
                     <div class="file-input-wrapper">
                         <input type="file" id="subtitleFile" accept=".srt" />
                         <label for="subtitleFile" class="file-input-label" id="fileInputLabel">
-                            📁 点击选择SRT文件或拖拽到此处
+                            📁 Click to select SRT file or drag & drop here
                         </label>
                     </div>
                     <div class="help-text">
-                        如果自动获取字幕失败，可以手动下载SRT字幕文件并上传,如<a href="https://downsub.com" target="_blank" id="downsubLink">downsub.com</a>等网站
+                        If automatic subtitle retrieval fails, you can manually download and upload SRT files from sites like <a href="https://downsub.com" target="_blank" id="downsubLink">downsub.com</a>
                     </div>
                 </div>
 
                 <div style="margin-top: 10px;">
-                    <button class="btn btn-danger" id="clearSubtitleBtn">清除当前字幕</button>
+                    <button class="btn btn-danger" id="clearSubtitleBtn">Clear Current Subtitles</button>
                 </div>
             </div>
 
             <div class="divider"></div>
 
-            <!-- 操作按钮 -->
+            <!-- Quick Actions -->
             <div class="section">
-                <h3>🚀 快速操作</h3>
-                <button class="btn" id="testBtn">测试API连接</button>
+                <h3>🚀 Quick Actions</h3>
+                <button class="btn" id="testBtn">Test API Connection</button>
                 <div style="margin-top: 10px;">
-                    <button class="btn btn-secondary" id="helpBtn">使用说明</button>
+                    <button class="btn btn-secondary" id="helpBtn">User Guide</button>
                 </div>
             </div>
 
-            <!-- 状态显示 -->
+            <!-- Status Display -->
             <div id="statusMessage" style="display: none;"></div>
         </div>
     </div>
 
+    <script src="utils/logger.js"></script>
     <script src="popup.js"></script>
 </body>
 </html> 

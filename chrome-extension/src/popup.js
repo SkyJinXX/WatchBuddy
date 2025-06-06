@@ -1,34 +1,37 @@
 /**
- * YouTube语音助手 - Popup界面脚本
+ * YouTube Watching Assistant - Popup Interface Script
  */
 
-// 页面加载完成后初始化
+// Initialize after the page loads
 document.addEventListener('DOMContentLoaded', function() {
     initPopup();
 });
 
 /**
- * 初始化popup界面
+ * Initialize popup interface
  */
 async function initPopup() {
-    // 加载已保存的API密钥
+    // Load saved API key
     await loadApiKey();
     
-    // 检查当前页面
+    // Load voice settings
+    await loadVoiceSettings();
+    
+    // Check current page
     await checkCurrentPage();
     
-    // 加载当前视频字幕状态
+    // Load current video subtitle status
     await loadSubtitleStatus();
     
-    // 绑定事件监听器
+    // Bind event listeners
     bindEventListeners();
     
-    // 设置消息监听器
+    // Set message listener
     setupMessageListener();
 }
 
 /**
- * 设置消息监听器
+ * Set message listener
  */
 function setupMessageListener() {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -39,73 +42,106 @@ function setupMessageListener() {
 }
 
 /**
- * 处理字幕状态更新
+ * Handle subtitle status update
  */
 function handleSubtitleStatusUpdate(data) {
-    console.log('Popup: 收到字幕状态更新:', data);
+    Logger.log('Popup: 收到字幕状态更新:', data);
     
     if (data.hasSubtitles) {
         let statusMessage = '';
         if (data.source === 'manual') {
-            statusMessage = '✅ 已加载手动上传的字幕';
+            statusMessage = '✅ Manual subtitles loaded';
         } else if (data.source === 'api') {
-            statusMessage = `✅ 已加载自动字幕 (${data.language})`;
+            statusMessage = `✅ Auto subtitles loaded (${data.language})`;
         } else {
-            statusMessage = `✅ 已加载字幕 (${data.language})`;
+            statusMessage = `✅ Subtitles loaded (${data.language})`;
         }
         
         updateSubtitleStatus(statusMessage, 'loaded');
     } else {
-        updateSubtitleStatus('❌ 当前视频暂无可用字幕', 'empty');
+        updateSubtitleStatus('❌ No subtitles available for current video', 'empty');
     }
 }
 
 /**
- * 加载已保存的API密钥
+ * Load saved API key
  */
 async function loadApiKey() {
     try {
         const result = await chrome.storage.sync.get(['openai_api_key']);
         if (result.openai_api_key) {
             document.getElementById('apiKey').value = result.openai_api_key;
-            showStatus('API密钥已加载', 'success');
+            showStatus('API key loaded', 'success');
         }
     } catch (error) {
-        console.error('加载API密钥失败:', error);
+        Logger.error('Failed to load API key:', error);
     }
 }
 
 /**
- * 保存API密钥
+ * Load voice settings
+ */
+async function loadVoiceSettings() {
+    try {
+        const result = await chrome.storage.sync.get(['enhanced_voice_mode']);
+        const enhancedMode = result.enhanced_voice_mode || false; // Default off
+        document.getElementById('enhancedVoiceMode').checked = enhancedMode;
+        Logger.log('Enhanced voice mode loaded:', enhancedMode);
+    } catch (error) {
+        Logger.error('Failed to load voice settings:', error);
+    }
+}
+
+/**
+ * Save voice settings
+ */
+async function saveVoiceSettings() {
+    try {
+        const enhancedMode = document.getElementById('enhancedVoiceMode').checked;
+        await chrome.storage.sync.set({ enhanced_voice_mode: enhancedMode });
+        Logger.log('Enhanced voice mode saved:', enhancedMode);
+        
+        // Notify content script to update settings
+        notifyContentScript();
+        
+        showStatus(`Enhanced voice mode ${enhancedMode ? 'enabled' : 'disabled'}`, 'success');
+    } catch (error) {
+        Logger.error('Failed to save voice settings:', error);
+        showStatus('Failed to save voice settings', 'error');
+    }
+}
+
+/**
+ * Save API key
  */
 async function saveApiKey() {
     const apiKey = document.getElementById('apiKey').value.trim();
     
     if (!apiKey) {
-        showStatus('请输入API密钥', 'error');
+        showStatus('Please enter API key', 'error');
         return;
     }
     
     if (!apiKey.startsWith('sk-')) {
-        showStatus('API密钥格式不正确，应以sk-开头', 'error');
+        showStatus('Invalid API key format, should start with sk-', 'error');
         return;
     }
     
     try {
         await chrome.storage.sync.set({ openai_api_key: apiKey });
-        showStatus('API密钥保存成功！', 'success');
+        showStatus('API key saved successfully!', 'success');
         
-        // 通知content script重新初始化
+        // Notify content script to re-initialize
         notifyContentScript();
         
     } catch (error) {
-        console.error('保存API密钥失败:', error);
-        showStatus('保存失败: ' + error.message, 'error');
+        Logger.error('Failed to save API key:', error);
+        showStatus('Save failed: ' + error.message, 'error');
     }
 }
 
 /**
- * 通知content script重新初始化
+ * Notify content script to re-initialize
  */
 async function notifyContentScript() {
     try {
@@ -117,12 +153,12 @@ async function notifyContentScript() {
             });
         }
     } catch (error) {
-        console.log('通知content script失败:', error);
+        Logger.log('Failed to notify content script:', error);
     }
 }
 
 /**
- * 加载当前视频字幕状态
+ * Load current video subtitle status
  */
 async function loadSubtitleStatus() {
     try {
@@ -131,18 +167,18 @@ async function loadSubtitleStatus() {
             return;
         }
 
-        // 显示字幕管理部分
+        // Show subtitle management section
         document.getElementById('subtitleSection').style.display = 'block';
 
-        // 获取当前视频ID
+        // Get current video ID
         const urlParams = new URLSearchParams(tab.url.split('?')[1]);
         const videoId = urlParams.get('v');
         
         if (videoId) {
-            // 更新downsub链接
+            // Update downsub link
             updateDownsubLink(tab.url);
             
-            // 优先级: 手动字幕 > 缓存的API字幕 > background中的API字幕
+            // Priority: manual subtitles > cached API subtitles > background API subtitles
             const [manualResult, apiResult] = await Promise.all([
                 chrome.storage.local.get([`manual_subtitle_${videoId}`]),
                 chrome.storage.local.get([`api_subtitle_${videoId}`])
@@ -152,30 +188,30 @@ async function loadSubtitleStatus() {
             const apiSubtitle = apiResult[`api_subtitle_${videoId}`];
             
             if (manualSubtitle) {
-                console.log('找到已保存的手动字幕，videoId:', videoId, '内容长度:', manualSubtitle.content.length);
-                updateSubtitleStatus('✅ 已加载手动上传的字幕', 'loaded');
+                Logger.log('Found saved manual subtitles, videoId:', videoId, 'content length:', manualSubtitle.content.length);
+                updateSubtitleStatus('✅ Manual subtitles loaded', 'loaded');
             } else if (apiSubtitle) {
-                console.log('找到已缓存的API字幕，videoId:', videoId, '语言:', apiSubtitle.language);
-                updateSubtitleStatus(`✅ 已加载自动字幕 (${apiSubtitle.language})`, 'loaded');
+                Logger.log('Found cached API subtitles, videoId:', videoId, 'language:', apiSubtitle.language);
+                updateSubtitleStatus(`✅ Auto subtitles loaded (${apiSubtitle.language})`, 'loaded');
             } else {
-                // 检查background中是否有API字幕数据
+                // Check if background has API subtitle data
                 chrome.runtime.sendMessage({ action: 'get_current_subtitles', videoId: videoId }, (response) => {
                     if (response && response.success && response.hasSubtitles) {
-                        updateSubtitleStatus(`✅ 已加载自动字幕 (${response.language})`, 'loaded');
+                        updateSubtitleStatus(`✅ Auto subtitles loaded (${response.language})`, 'loaded');
                     } else {
-                        console.log('未找到已保存的字幕，videoId:', videoId);
-                        updateSubtitleStatus('❌ 当前视频暂无可用字幕', 'empty');
+                        Logger.log('No saved subtitles found, videoId:', videoId);
+                        updateSubtitleStatus('❌ No subtitles available for current video', 'empty');
                     }
                 });
             }
         }
     } catch (error) {
-        console.error('加载字幕状态失败:', error);
+        Logger.error('Failed to load subtitle status:', error);
     }
 }
 
 /**
- * 更新字幕状态显示
+ * Update subtitle status display
  */
 function updateSubtitleStatus(message, type) {
     const statusElement = document.getElementById('subtitleStatus');
@@ -184,48 +220,48 @@ function updateSubtitleStatus(message, type) {
 }
 
 /**
- * 更新downsub链接
+ * Update downsub link
  */
 function updateDownsubLink(youtubeUrl) {
     const downsubLink = document.getElementById('downsubLink');
     if (downsubLink && youtubeUrl && youtubeUrl.includes('youtube.com/watch')) {
-        // 对YouTube URL进行编码
+        // Encode YouTube URL
         const encodedUrl = encodeURIComponent(youtubeUrl);
-        // 生成downsub链接
+        // Generate downsub link
         const downsubUrl = `https://downsub.com/?url=${encodedUrl}`;
         downsubLink.href = downsubUrl;
-        console.log('已更新downsub链接:', downsubUrl);
+        Logger.log('Updated downsub link:', downsubUrl);
     }
 }
 
 /**
- * 处理文件上传
+ * Handle file upload
  */
 async function handleFileUpload(file) {
     if (!file || !file.name.toLowerCase().endsWith('.srt')) {
-        showStatus('请选择SRT格式的字幕文件', 'error');
+        showStatus('Please select an SRT subtitle file', 'error');
         return;
     }
 
     const reader = new FileReader();
     reader.onload = async function(e) {
         const content = e.target.result;
-        document.getElementById('fileInputLabel').textContent = `📁 已选择: ${file.name}`;
+        document.getElementById('fileInputLabel').textContent = `📁 Selected: ${file.name}`;
         
-        // 自动保存字幕
+        // Auto save subtitle
         await saveSubtitleContent(content);
     };
     reader.readAsText(file);
 }
 
 /**
- * 保存字幕内容
+ * Save subtitle content
  */
 async function saveSubtitleContent(subtitleContent) {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab || !tab.url || !tab.url.includes('youtube.com/watch')) {
-            showStatus('请在YouTube视频页面使用此功能', 'error');
+            showStatus('Please use this function on a YouTube video page', 'error');
             return;
         }
 
@@ -233,22 +269,22 @@ async function saveSubtitleContent(subtitleContent) {
         const videoId = urlParams.get('v');
 
         if (!videoId) {
-            showStatus('无法获取视频ID', 'error');
+            showStatus('Unable to get video ID', 'error');
             return;
         }
 
         if (!subtitleContent || !subtitleContent.trim()) {
-            showStatus('字幕内容为空', 'error');
+            showStatus('Subtitle content is empty', 'error');
             return;
         }
 
-        // 验证SRT格式
+        // Validate SRT format
         if (!isValidSRTFormat(subtitleContent)) {
-            showStatus('字幕格式不正确，请确保是SRT格式', 'error');
+            showStatus('Incorrect subtitle format, please ensure it is in SRT format', 'error');
             return;
         }
 
-        // 保存到本地存储
+        // Save to local storage
         const subtitleData = {
             videoId: videoId,
             content: subtitleContent.trim(),
@@ -259,29 +295,29 @@ async function saveSubtitleContent(subtitleContent) {
             [`manual_subtitle_${videoId}`]: subtitleData
         });
 
-        // 通知content script字幕已更新
+        // Notify content script subtitle updated
         chrome.tabs.sendMessage(tab.id, {
             action: 'manual_subtitle_uploaded',
             videoId: videoId,
             subtitleData: subtitleData
         });
 
-        updateSubtitleStatus('✅ 字幕保存成功', 'loaded');
-        showStatus('字幕上传并保存成功！可以开始语音对话了', 'success');
+        updateSubtitleStatus('✅ Subtitles saved successfully', 'loaded');
+        showStatus('Subtitles uploaded and saved successfully! You can start voice conversation now.', 'success');
         
-        console.log('字幕保存成功，videoId:', videoId, '内容长度:', subtitleContent.length);
+        Logger.log('Subtitle saved successfully, videoId:', videoId, 'content length:', subtitleContent.length);
 
     } catch (error) {
-        console.error('保存字幕失败:', error);
-        showStatus('保存字幕失败: ' + error.message, 'error');
+        Logger.error('Save subtitles failed:', error);
+        showStatus('Failed to save subtitles: ' + error.message, 'error');
     }
 }
 
 /**
- * 清除字幕
+ * Clear subtitles
  */
 async function clearSubtitle() {
-    if (!confirm('确定要清除当前视频的字幕吗？')) {
+    if (!confirm('Are you sure you want to clear the subtitles for the current video?')) {
         return;
     }
 
@@ -295,41 +331,41 @@ async function clearSubtitle() {
         const videoId = urlParams.get('v');
 
         if (videoId) {
-            // 从存储中删除手动字幕和API字幕缓存
+            // Remove manual subtitles and API subtitle cache from storage
             await chrome.storage.local.remove([
                 `manual_subtitle_${videoId}`,
                 `api_subtitle_${videoId}`
             ]);
             
-            // 重置文件选择标签
-            document.getElementById('fileInputLabel').textContent = '📁 点击选择SRT文件或拖拽到此处';
+            // Reset file selection label
+            document.getElementById('fileInputLabel').textContent = '📁 Select an SRT subtitle file or drag and drop here';
             
-            // 通知content script字幕已清除
+            // Notify content script subtitles cleared
             chrome.tabs.sendMessage(tab.id, {
                 action: 'manual_subtitle_cleared',
                 videoId: videoId
             });
 
-            updateSubtitleStatus('❌ 当前视频暂无可用字幕', 'empty');
-            showStatus('所有字幕数据已清除', 'success');
+            updateSubtitleStatus('❌ No subtitles available for the current video', 'empty');
+            showStatus('All subtitle data has been cleared', 'success');
         }
     } catch (error) {
-        console.error('清除字幕失败:', error);
-        showStatus('清除字幕失败: ' + error.message, 'error');
+        Logger.error('Clear subtitles failed:', error);
+        showStatus('Failed to clear subtitles: ' + error.message, 'error');
     }
 }
 
 /**
- * 验证SRT格式
+ * Validate SRT format
  */
 function isValidSRTFormat(content) {
-    // 简单的SRT格式验证
+    // Simple SRT format validation
     const srtPattern = /^\d+\s+\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3}\s+.+/m;
     return srtPattern.test(content);
 }
 
 /**
- * 检查当前页面
+ * Check current page
  */
 async function checkCurrentPage() {
     try {
@@ -340,37 +376,37 @@ async function checkCurrentPage() {
         if (tab && tab.url) {
             if (tab.url.includes('youtube.com/watch')) {
                 pageStatus.style.display = 'block';
-                pageUrl.textContent = '✅ YouTube视频页面 - 语音助手可用';
+                pageUrl.textContent = '✅ YouTube Video Page - Watching Assistant Available';
                 pageUrl.style.color = '#155724';
             } else if (tab.url.includes('youtube.com')) {
                 pageStatus.style.display = 'block';
-                pageUrl.textContent = '⚠️ YouTube页面但非视频页面';
+                pageUrl.textContent = '⚠️ YouTube Page but not a video page';
                 pageUrl.style.color = '#856404';
             } else {
                 pageStatus.style.display = 'block';
-                pageUrl.textContent = '❌ 非YouTube页面 - 语音助手不可用';
+                pageUrl.textContent = '❌ Non-YouTube Page - Watching Assistant Unavailable';
                 pageUrl.style.color = '#721c24';
             }
         }
     } catch (error) {
-        console.error('检查当前页面失败:', error);
+        Logger.error('Check current page failed:', error);
     }
 }
 
 /**
- * 测试API连接
+ * Test API connection
  */
 async function testConnection() {
     const testBtn = document.getElementById('testBtn');
     const apiKey = document.getElementById('apiKey').value.trim();
     
     if (!apiKey) {
-        showStatus('请先输入API密钥', 'error');
+        showStatus('Please enter API key first', 'error');
         return;
     }
     
     testBtn.disabled = true;
-    testBtn.textContent = '测试中...';
+    testBtn.textContent = 'Testing...';
     
     try {
         const response = await fetch('https://api.openai.com/v1/models', {
@@ -382,23 +418,23 @@ async function testConnection() {
         });
         
         if (response.ok) {
-            showStatus('✅ API连接测试成功！', 'success');
+            showStatus('✅ API connection test successful!', 'success');
         } else {
             const errorData = await response.json();
-            showStatus(`❌ API测试失败: ${errorData.error?.message || '未知错误'}`, 'error');
+            showStatus(`❌ API test failed: ${errorData.error?.message || 'Unknown error'}`, 'error');
         }
         
     } catch (error) {
-        console.error('API测试失败:', error);
-        showStatus(`❌ 网络错误: ${error.message}`, 'error');
+        Logger.error('API test failed:', error);
+        showStatus(`❌ Network error: ${error.message}`, 'error');
     } finally {
         testBtn.disabled = false;
-        testBtn.textContent = '测试API连接';
+        testBtn.textContent = 'Test API Connection';
     }
 }
 
 /**
- * 显示状态消息
+ * Show status message
  */
 function showStatus(message, type = 'info') {
     const statusElement = document.getElementById('statusMessage');
@@ -406,14 +442,14 @@ function showStatus(message, type = 'info') {
     statusElement.className = `status ${type}`;
     statusElement.style.display = 'block';
     
-    // 3秒后自动隐藏
+    // Hide after 3 seconds
     setTimeout(() => {
         statusElement.style.display = 'none';
     }, 3000);
 }
 
 /**
- * 切换密码显示/隐藏
+ * Toggle password display/hide
  */
 function togglePassword() {
     const passwordInput = document.getElementById('apiKey');
@@ -421,84 +457,84 @@ function togglePassword() {
     
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
-        toggleBtn.textContent = '隐藏';
+        toggleBtn.textContent = 'Hide';
     } else {
         passwordInput.type = 'password';
-        toggleBtn.textContent = '显示';
+        toggleBtn.textContent = 'Show';
     }
 }
 
 /**
- * 打开使用说明
+ * Open instructions
  */
 function openHelp() {
     const helpContent = `
-🎤 YouTube语音助手使用说明
+🎤 Instructions
 
-✨ 功能介绍：
-• 在观看YouTube视频时，点击右侧浮动按钮即可语音提问
-• AI会基于视频内容和字幕智能回答您的问题
-• 支持多语言问答，自动识别语音语言
+✨ Features:
+• When watching a YouTube video, click the floating button on the right to ask questions by voice
+• AI will answer your questions intelligently based on the video content and subtitles
+• Supports multi-language Q&A, automatically recognizes voice language
 
-🚀 使用步骤：
-1. 配置OpenAI API密钥（必须）
-2. 打开任意YouTube视频页面
-3. 如果自动获取字幕失败，可手动上传SRT字幕文件
-4. 点击右侧浮动的🎤按钮
-5. 说出您的问题（智能语音检测）
-6. AI会自动回答并播放语音
+🚀 Steps to Use:
+1. Configure OpenAI API Key (Required)
+2. Open any YouTube video page
+3. If automatic subtitle retrieval fails, you can manually upload an SRT subtitle file
+4. Click the floating 🎤 button on the right
+5. Speak your question (intelligent voice detection)
+6. AI will automatically answer and play audio
 
-📝 字幕功能：
-• 扩展会自动尝试获取视频字幕
-• 如果失败，可从 downsub.com 下载SRT文件手动上传
-• 支持直接编辑字幕文本
-• 每个视频的字幕会单独保存
+📝 Subtitle Features:
+• The extension will automatically attempt to fetch video subtitles
+• If it fails, you can download an SRT file from downsub.com and upload it manually
+• Supports direct editing of subtitle text
+• Subtitles for each video are saved separately
 
-💡 使用技巧：
-• 问题要简洁明了，如："刚才说了什么？"
-• 可以询问视频特定内容，如："这个概念是什么意思？"
-• 支持上下文对话，可以追问相关问题
+💡 Usage Tips:
+• Keep questions concise and clear, such as: "What was just said?"
+• You can ask about specific video content, such as: "What does this concept mean?"
+• Supports contextual conversation, you can ask follow-up questions
 
-⚙️ 注意事项：
-• 需要允许浏览器麦克风权限
-• 确保网络连接稳定
-• API调用会产生费用，请合理使用
+⚙️ Notes:
+• Requires granting microphone permission to the browser
+• Ensure a stable network connection
+• API calls incur costs, please use reasonably
 
-❓ 常见问题：
-• 如果按钮不显示，请刷新页面
-• 如果API报错，请检查密钥配置
-• 如果没有声音，请检查音量设置
+❓ FAQ:
+• If the button does not appear, please refresh the page
+• If the API reports an error, please check the key configuration
+• If there is no sound, please check the volume settings
 
-💰 费用说明：
-• 语音转文字：约$0.006/分钟
-• AI对话：约$0.0015/1000字符
-• 语音合成：约$0.015/1000字符
-• 建议设置使用限制避免意外费用
+💰 Cost estimation:
+• 30 questions per day, $7 per month
     `;
     
     alert(helpContent);
 }
 
 /**
- * 绑定事件监听器
+ * Bind event listeners
  */
 function bindEventListeners() {
-    // 保存API密钥按钮
+    // Save API Key button
     document.getElementById('saveApiKeyBtn').addEventListener('click', saveApiKey);
     
-    // 密码显示/隐藏按钮
+    // Password show/hide button
     document.getElementById('togglePasswordBtn').addEventListener('click', togglePassword);
     
-    // 测试连接按钮
+    // Test connection button
     document.getElementById('testBtn').addEventListener('click', testConnection);
     
-    // 帮助按钮
+    // Help button
     document.getElementById('helpBtn').addEventListener('click', openHelp);
     
-    // 字幕相关按钮
+    // Subtitle related buttons
     document.getElementById('clearSubtitleBtn').addEventListener('click', clearSubtitle);
     
-    // 文件上传
+    // Enhanced voice mode switch
+    document.getElementById('enhancedVoiceMode').addEventListener('change', saveVoiceSettings);
+    
+    // File upload
     const fileInput = document.getElementById('subtitleFile');
     const fileLabel = document.getElementById('fileInputLabel');
     
@@ -508,9 +544,7 @@ function bindEventListeners() {
         }
     });
     
-
-    
-    // 拖拽上传
+    // Drag and drop upload
     fileLabel.addEventListener('dragover', function(e) {
         e.preventDefault();
         e.currentTarget.classList.add('dragover');
@@ -528,7 +562,7 @@ function bindEventListeners() {
         }
     });
     
-    // API密钥输入框回车键
+    // API key input box Enter key
     document.getElementById('apiKey').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             saveApiKey();
@@ -536,26 +570,26 @@ function bindEventListeners() {
     });
 }
 
-// 等待DOM加载完成后绑定其他事件监听器
+// Wait for DOM to load before binding other event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    // API密钥输入框实时验证
+    // API key input box real-time validation
     document.getElementById('apiKey').addEventListener('input', function(e) {
         const value = e.target.value.trim();
         const saveBtn = document.getElementById('saveApiKeyBtn');
         
         if (value.startsWith('sk-') && value.length > 20) {
             saveBtn.style.background = 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)';
-            saveBtn.textContent = '保存配置 ✓';
+            saveBtn.textContent = 'Save Configuration ✓';
         } else {
             saveBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            saveBtn.textContent = '保存配置';
+            saveBtn.textContent = 'Save Configuration';
         }
     });
 
-    // 定期更新当前页面状态 (降低频率避免干扰用户编辑)
+    // Periodically update current page status (reduce frequency to avoid interfering with user editing)
     setInterval(() => {
         checkCurrentPage();
-        // 只在用户未专注于文本框时更新字幕状态
+        // Update subtitle status only when user is not focused on text area
         const subtitleTextArea = document.getElementById('subtitleText');
         if (subtitleTextArea && document.activeElement !== subtitleTextArea) {
             loadSubtitleStatus();

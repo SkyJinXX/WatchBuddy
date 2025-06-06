@@ -1,0 +1,12 @@
+{
+  "name": "youtube-watching-assistant",
+  "version": "0.5.0",
+  "description": "YouTube Watching Assistant Chrome Extension",
+  "scripts": {
+    "dev": "node restore-dev.js",
+    "release": "node prepare-release.js",
+    "help": "echo '开发: npm run dev | 发布: npm run release'"
+  },
+  "devDependencies": {},
+  "private": true
+} 

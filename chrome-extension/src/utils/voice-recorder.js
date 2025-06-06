@@ -1,5 +1,5 @@
 /**
- * 智能语音录制器 - 使用VAD自动检测语音开始和结束
+ * Smart Voice Recorder - Uses VAD to automatically detect speech start and end
  */
 class SmartVoiceRecorder {
     constructor() {
@@ -11,105 +11,115 @@ class SmartVoiceRecorder {
         this.onStatusUpdateCallback = null;
         this.mediaRecorder = null;
         this.stream = null;
-        this.microphoneReady = false; // 麦克风是否已准备好
-        this.hasNotifiedMicReady = false; // 是否已通知用户麦克风准备好
-        this.vadInitialized = false; // VAD是否已初始化
-        this.isPaused = false; // VAD是否处于暂停状态
+        this.microphoneReady = false; // Whether microphone is ready
+        this.hasNotifiedMicReady = false; // Whether user has been notified microphone is ready
+        this.vadInitialized = false; // Whether VAD is initialized
+        this.isPaused = false; // Whether VAD is paused
     }
 
     /**
-     * 初始化VAD和录音器
+     * Initialize VAD and recorder
      */
     async initialize() {
         try {
-            // 检查VAD库是否可用
+            // Check if VAD library is available
             if (typeof vad === 'undefined' || !vad.MicVAD) {
-                throw new Error('VAD库未加载，请检查网络连接');
+                throw new Error('VAD library not loaded, please check network connection');
             }
 
-            // 初始化VAD
+            // Initialize VAD
             this.vadInstance = await vad.MicVAD.new({
                 onFrameProcessed: (probabilities, frame) => {
-                    // 第一次处理音频帧时，说明麦克风已经真正开始工作
+                    // When the first audio frame is processed, it means the microphone has truly started working
                     if (!this.microphoneReady) {
                         this.microphoneReady = true;
-                        console.log('Voice: 麦克风已准备就绪，开始接收音频');
+                        Logger.log('Voice: Microphone ready, starting to receive audio');
                         this.handleMicrophoneReady();
                     }
                 },
                 onSpeechStart: () => {
-                    console.log('Voice: 检测到语音开始');
+                    Logger.log('Voice: Speech start detected');
                     this.handleSpeechStart();
                 },
                 onSpeechEnd: (audio) => {
-                    console.log('Voice: 检测到语音结束');
+                    Logger.log('Voice: Speech end detected');
                     this.handleSpeechEnd(audio);
                 },
                 onVADMisfire: () => {
-                    console.log('Voice: VAD误触发');
-                    this.updateStatus('请重新开始说话', 'info');
+                    Logger.log('Voice: VAD misfire');
+                    this.updateStatus('Please start speaking again', 'info');
                 },
-                // VAD配置参数
+                // VAD configuration parameters
                 mode: 'v5',
-                positiveSpeechThreshold: 0.5,  // 语音检测阈值
-                negativeSpeechThreshold: 0.35, // 静音检测阈值
-                minSpeechFrames: 16,            // 最小语音帧数
-                preSpeechPadFrames: 16,         // 语音前填充帧数
-                redemptionFrames: 32,           // 救赎帧数（避免误判）
-                frameSamples: 512,            // 每帧样本数
-                submitUserSpeechOnPause: false // 暂停时不提交音频
+                positiveSpeechThreshold: 0.5,  // Speech detection threshold
+                negativeSpeechThreshold: 0.35, // Silence detection threshold
+                minSpeechFrames: 16,            // Minimum speech frames
+                preSpeechPadFrames: 16,         // Pre-speech padding frames
+                redemptionFrames: 32,           // Redemption frames (avoid false positives)
+                frameSamples: 512,            // Samples per frame
+                submitUserSpeechOnPause: false // Do not submit audio when paused
             });
 
-            console.log('Voice: VAD初始化成功');
+            Logger.log('Voice: VAD initialized successfully');
             this.vadInitialized = true;
             this.isPaused = false;
             return true;
 
         } catch (error) {
-            console.error('Voice: VAD初始化失败:', error);
-            throw new Error(`语音检测初始化失败: ${error.message}`);
+            Logger.error('Voice: VAD initialization failed:', error);
+            throw new Error(`Voice detection initialization failed: ${error.message}`);
         }
     }
 
     /**
-     * 开始智能录音
+     * Start smart recording
      */
     async startSmartRecording() {
         try {
             if (this.isRecording) {
-                console.warn('Voice: 已在录音中');
+                Logger.warn('Voice: Already recording');
                 return;
             }
 
-            this.updateStatus('正在启动...', 'processing');
+            this.updateStatus('Starting...', 'processing');
             
-            // 如果VAD已初始化且只是暂停状态，直接恢复
-            if (this.vadInitialized && this.isPaused && this.vadInstance) {
-                console.log('Voice: 恢复VAD录音（避免1.0~1.7秒音频丢失）');
+            // Check enhanced voice mode setting
+            const enhancedMode = await this.getEnhancedVoiceMode();
+            
+            // Enhanced mode: If VAD is initialized and only paused, resume directly
+            if (enhancedMode && this.vadInitialized && this.isPaused && this.vadInstance) {
+                Logger.log('Voice: Resuming VAD recording (enhanced mode, avoids 1.0~1.7s audio loss)');
                 this.vadInstance.start();
                 this.isPaused = false;
             } else {
-                // 首次初始化或VAD实例丢失，重新初始化
-                console.log('Voice: 首次初始化VAD');
+                // Standard mode or first initialization: Re-initialize VAD
+                if (this.vadInstance && !enhancedMode) {
+                    // In standard mode, if there's an old instance, destroy it first
+                    this.vadInstance.destroy();
+                    this.vadInstance = null;
+                    this.vadInitialized = false;
+                }
+                
                 if (!this.vadInstance) {
+                    Logger.log(`Voice: Initializing VAD (${enhancedMode ? 'enhanced' : 'standard'} mode)`);
                     await this.initialize();
                 }
-                // 初始化后必须调用start()开始监听
+                // After initialization, must call start() to begin listening
                 this.vadInstance.start();
                 this.isPaused = false;
             }
 
-            // 重置录音状态（但保持VAD实例）
+            // Reset recording status (but keep VAD instance)
             this.microphoneReady = false;
             this.hasNotifiedMicReady = false;
             this.audioChunks = [];
             this.isRecording = true;
             
-            console.log('Voice: 智能录音已启动，等待麦克风准备就绪...');
+            Logger.log('Voice: Smart recording started, waiting for microphone to be ready...');
 
         } catch (error) {
-            console.error('Voice: 启动录音失败:', error);
-            this.updateStatus('录音启动失败: ' + error.message, 'error');
+            Logger.error('Voice: Failed to start recording:', error);
+            this.updateStatus('Recording startup failed: ' + error.message, 'error');
             throw error;
         }
     }
@@ -117,22 +127,22 @@ class SmartVoiceRecorder {
 
 
     /**
-     * 处理麦克风准备就绪事件
+     * Handle microphone ready event
      */
     handleMicrophoneReady() {
-        // 只在第一次检测到麦克风准备好时通知用户
+        // Only notify user the first time microphone is detected ready
         if (!this.hasNotifiedMicReady) {
             this.hasNotifiedMicReady = true;
-            this.updateStatus('正在录音...', 'recording');
-            console.log('Voice: 通知用户可以开始说话');
+            this.updateStatus('Recording...', 'recording');
+            Logger.log('Voice: Notifying user to start speaking');
         }
     }
 
     /**
-     * 处理语音开始事件
+     * Handle speech start event
      */
     handleSpeechStart() {
-        this.updateStatus('正在录音...', 'recording');
+        this.updateStatus('Recording...', 'recording');
         
         if (this.onSpeechStartCallback) {
             this.onSpeechStartCallback();
@@ -140,29 +150,39 @@ class SmartVoiceRecorder {
     }
 
     /**
-     * 处理语音结束事件
+     * Handle speech end event
      */
     async handleSpeechEnd(vadAudio) {
         try {
-            this.updateStatus('语音录制完成', 'processing');
+            this.updateStatus('Speech recording complete', 'processing');
             
-            // 将VAD提供的Float32Array转换为Blob
+            // Convert Float32Array provided by VAD to Blob
             const audioBlob = this.float32ArrayToBlob(vadAudio);
             
             this.isRecording = false;
             
-            // 重置麦克风状态
+            // Reset microphone status
             this.microphoneReady = false;
             this.hasNotifiedMicReady = false;
             
-            // 暂停VAD而不是销毁，保持麦克风权限和音频上下文
-            if (this.vadInstance) {
+            // Check enhanced voice mode setting
+            const enhancedMode = await this.getEnhancedVoiceMode();
+            
+            if (enhancedMode && this.vadInstance) {
+                // Enhanced mode: Pause VAD instead of destroying
                 this.vadInstance.pause();
                 this.isPaused = true;
-                console.log('Voice: VAD已暂停（保持音频上下文，避免1.0~1.7秒丢失）');
+                Logger.log('Voice: VAD paused (enhanced mode, retains audio context)');
+            } else if (this.vadInstance) {
+                // Standard mode: Destroy VAD to release microphone
+                this.vadInstance.destroy();
+                this.vadInstance = null;
+                this.vadInitialized = false;
+                this.isPaused = false;
+                Logger.log('Voice: VAD destroyed (standard mode, releases microphone permission)');
             }
 
-            console.log('Voice: 语音录制完成，音频长度:', vadAudio.length, '样本');
+            Logger.log('Voice: Speech recording complete, audio length:', vadAudio.length, 'samples');
             
             if (this.onSpeechEndCallback) {
                 this.onSpeechEndCallback(audioBlob);
@@ -171,19 +191,30 @@ class SmartVoiceRecorder {
             return audioBlob;
 
         } catch (error) {
-            console.error('Voice: 处理语音结束失败:', error);
-            this.updateStatus('处理录音失败: ' + error.message, 'error');
+            Logger.error('Voice: Failed to process speech end:', error);
+            this.updateStatus('Failed to process recording: ' + error.message, 'error');
             
-            // 出错时也暂停而不是销毁
+            // Handle based on mode when error occurs
             if (this.vadInstance) {
                 try {
-                    this.vadInstance.pause();
-                    this.isPaused = true;
-                } catch (pauseError) {
-                    console.error('Voice: 暂停VAD失败，尝试销毁:', pauseError);
+                    const enhancedMode = await this.getEnhancedVoiceMode();
+                    if (enhancedMode) {
+                        this.vadInstance.pause();
+                        this.isPaused = true;
+                        Logger.log('Voice: Paused VAD on error (enhanced mode)');
+                    } else {
+                        this.vadInstance.destroy();
+                        this.vadInstance = null;
+                        this.vadInitialized = false;
+                        this.isPaused = false;
+                        Logger.log('Voice: Destroyed VAD on error (standard mode)');
+                    }
+                } catch (modeError) {
+                    Logger.error('Voice: Failed to handle VAD mode on error, forcing destroy:', modeError);
                     this.vadInstance.destroy();
                     this.vadInstance = null;
                     this.vadInitialized = false;
+                    this.isPaused = false;
                 }
             }
             this.microphoneReady = false;
@@ -196,20 +227,20 @@ class SmartVoiceRecorder {
 
 
     /**
-     * 将Float32Array转换为音频Blob
+     * Convert Float32Array to audio Blob
      */
     float32ArrayToBlob(float32Array) {
-        // 转换为16位PCM
+        // Convert to 16-bit PCM
         const buffer = new ArrayBuffer(float32Array.length * 2);
         const view = new DataView(buffer);
         
         for (let i = 0; i < float32Array.length; i++) {
-            // 将Float32转换为16位整数
+            // Convert Float32 to 16-bit integer
             const sample = Math.max(-1, Math.min(1, float32Array[i]));
             view.setInt16(i * 2, sample * 0x7FFF, true);
         }
 
-        // 创建WAV头
+        // Create WAV header
         const wavHeader = this.createWavHeader(float32Array.length);
         const wavBuffer = new ArrayBuffer(wavHeader.length + buffer.byteLength);
         const wavView = new Uint8Array(wavBuffer);
@@ -221,7 +252,7 @@ class SmartVoiceRecorder {
     }
 
     /**
-     * 创建WAV文件头
+     * Create WAV file header
      */
     createWavHeader(sampleCount) {
         const sampleRate = 16000;
@@ -257,7 +288,31 @@ class SmartVoiceRecorder {
     }
 
     /**
-     * 设置回调函数
+     * Get enhanced voice mode setting
+     */
+    async getEnhancedVoiceMode() {
+        try {
+            // Check if chrome extension context is valid
+            if (!chrome || !chrome.storage) {
+                Logger.warn('Voice: Chrome extension context unavailable, using standard mode');
+                return false;
+            }
+            
+            const result = await chrome.storage.sync.get(['enhanced_voice_mode']);
+            return result.enhanced_voice_mode || false; // Default off
+        } catch (error) {
+            // Extension context invalidated or other error
+            if (error.message.includes('Extension context invalidated')) {
+                Logger.warn('Voice: Extension context invalidated, using standard mode');
+            } else {
+                Logger.error('Voice: Failed to get enhanced voice mode setting:', error);
+            }
+            return false; // Use standard mode on error
+        }
+    }
+
+    /**
+     * Set callback functions
      */
     setCallbacks(callbacks) {
         this.onSpeechStartCallback = callbacks.onSpeechStart;
@@ -266,62 +321,62 @@ class SmartVoiceRecorder {
     }
 
     /**
-     * 更新状态显示
+     * Update status display
      */
     updateStatus(message, type = 'info') {
-        console.log(`Voice Status [${type}]:`, message);
+        Logger.log(`Voice Status [${type}]:`, message);
         if (this.onStatusUpdateCallback) {
             this.onStatusUpdateCallback(message, type);
         }
     }
 
     /**
-     * 完全销毁VAD实例（用于页面卸载或真正需要释放麦克风时）
+     * Fully destroy VAD instance (for page unload or when microphone truly needs to be released)
      */
     forceDestroy() {
         if (this.vadInstance) {
             this.vadInstance.destroy();
             this.vadInstance = null;
-            console.log('Voice: VAD实例已强制销毁，麦克风权限已释放');
+            Logger.log('Voice: VAD instance forced destroyed, microphone permission released');
         }
         
-        // 重置所有状态
+        // Reset all states
         this.isRecording = false;
         this.microphoneReady = false;
         this.hasNotifiedMicReady = false;
         this.vadInitialized = false;
         this.isPaused = false;
         this.audioChunks = [];
-        console.log('Voice: 所有资源已强制清理');
+        Logger.log('Voice: All resources forcefully cleaned up');
     }
 
     /**
-     * 清理资源（向后兼容）
+     * Clean up resources (backward compatible)
      */
     destroy() {
         if (this.vadInstance) {
             this.vadInstance.destroy();
             this.vadInstance = null;
-            console.log('Voice: VAD实例已销毁');
+            Logger.log('Voice: VAD instance destroyed');
         }
         
-        // 重置所有状态
+        // Reset all states
         this.isRecording = false;
         this.microphoneReady = false;
         this.hasNotifiedMicReady = false;
         this.vadInitialized = false;
         this.isPaused = false;
         this.audioChunks = [];
-        console.log('Voice: 资源已清理，麦克风权限已释放');
+        Logger.log('Voice: Resources cleaned up, microphone permission released');
     }
 
     /**
-     * 检查是否正在录音
+     * Check if currently recording
      */
     get recording() {
         return this.isRecording;
     }
 }
 
-// 导出到全局
+// Export to global
 window.SmartVoiceRecorder = SmartVoiceRecorder; 

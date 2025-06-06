@@ -21,6 +21,7 @@
     {
       "matches": ["*://www.youtube.com/*"],
       "js": [
+        "src/utils/logger.js",
         "src/utils/ort.js",
         "src/utils/vad-web.js",
         "src/utils/crypto-js.min.js",
@@ -38,7 +39,7 @@
   },
   "action": {
     "default_popup": "src/popup.html",
-    "default_title": "YouTube Voice Assistant"
+    "default_title": "YouTube Watching Assistant"
   },
   "icons": {
     "16": "icons/icon16.png",

@@ -163,9 +163,9 @@ this.audioCache.set(audioId, {
 ```javascript
 // 获取缓存统计
 const summary = voiceAssistant.getConversationSummaryWithAudio();
-console.log('缓存效率:', summary.cacheHitRate);
-console.log('音频消息数:', summary.audioMessages);
-console.log('缓存命中数:', summary.cachedAudioReferences);
+Logger.log('缓存效率:', summary.cacheHitRate);
+Logger.log('音频消息数:', summary.audioMessages);
+Logger.log('缓存命中数:', summary.cachedAudioReferences);
 ```
 
 ## ⚠️ 注意事项

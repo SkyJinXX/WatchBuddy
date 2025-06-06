@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-# YouTube Voice Assistant Chrome Extension - Project Overview
+# YouTube Watching Assistant Chrome Extension - Project Overview
 
 ## Project Description
 This is a Chrome extension that provides AI-powered voice interaction for YouTube videos. Users can ask questions about video content through voice input and receive intelligent responses based on the video's subtitles.

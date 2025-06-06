@@ -106,13 +106,15 @@
     font-size: 13px;
     font-weight: 500;
     white-space: nowrap;
+    line-height: 1.4;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: opacity 0.2s ease-out, transform 0.2s ease-out;
     position: absolute;
     top: 0;
     right: 70px;
-    max-width: 200px;
+    max-width: 300px;
+    width: max-content;
     pointer-events: auto;
     opacity: 0;
     transform: translateX(10px);

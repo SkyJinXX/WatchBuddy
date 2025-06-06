@@ -1,40 +1,40 @@
 /**
- * OpenAI语音助手客户端 - GPT-4o-mini-audio-preview版本
- * 支持音频ID引用机制，避免重复传输音频数据
- * 大幅优化多轮对话的传输效率
+ * OpenAI Voice Assistant Client - GPT-4o-mini-audio-preview version
+ * Supports audio ID reference mechanism to avoid duplicate audio data transmission
+ * Significantly optimizes transmission efficiency for multi-turn conversations
  */
 class OpenAIVoiceAssistant {
     constructor(apiKey) {
         this.apiKey = apiKey;
         this.baseURL = 'https://api.openai.com/v1';
 
-        // 多视频对话历史管理
+        // Multi-video conversation history management
         this.videoConversations = new Map(); // videoId -> conversation history
         this.currentVideoId = null;
-        this.maxHistoryLength = 20; // 每个视频最多保留20条对话记录
-        this.maxVideoCount = 10; // 最多缓存5个视频的对话历史
+        this.maxHistoryLength = 20; // Maximum 20 conversation records per video
+        this.maxVideoCount = 10; // Maximum cache for 5 videos' conversation history
 
-        // 音频ID缓存管理
+        // Audio ID cache management
         this.audioCache = new Map(); // audioId -> { data, transcript, expiresAt }
         this.cleanupInterval = null;
 
-        // 监听页面卸载，清理所有对话历史
+        // Listen for page unload to clean up all conversation history
         this.setupCleanupListener();
         this.startAudioCacheCleanup();
     }
 
     /**
-     * 启动音频缓存自动清理
+     * Start automatic audio cache cleanup
      */
     startAudioCacheCleanup() {
-        // 每5分钟清理一次过期的音频缓存
+        // Clean up expired audio cache every 5 minutes
         this.cleanupInterval = setInterval(() => {
             this.cleanupExpiredAudioCache();
         }, 5 * 60 * 1000);
     }
 
     /**
-     * 清理过期的音频缓存
+     * Clean up expired audio cache
      */
     cleanupExpiredAudioCache() {
         const now = Math.floor(Date.now() / 1000);
@@ -48,12 +48,12 @@ class OpenAIVoiceAssistant {
         }
         
         if (cleanedCount > 0) {
-            console.log(`Audio: 清理了 ${cleanedCount} 个过期音频缓存`);
+            Logger.log(`Audio: Cleaned up ${cleanedCount} expired audio cache entries`);
         }
     }
 
     /**
-     * 设置页面卸载时的清理监听器
+     * Set up cleanup listener for page unload
      */
     setupCleanupListener() {
         window.addEventListener('beforeunload', () => {
@@ -63,7 +63,7 @@ class OpenAIVoiceAssistant {
     }
 
     /**
-     * 清理所有缓存
+     * Clear all caches
      */
     clearAllCaches() {
         this.audioCache.clear();
@@ -73,54 +73,54 @@ class OpenAIVoiceAssistant {
             this.cleanupInterval = null;
         }
         
-        console.log('Audio: 已清除所有音频缓存');
+        Logger.log('Audio: Cleared all audio cache');
     }
 
     /**
-     * 切换到指定视频的对话上下文
+     * Switch to specified video's conversation context
      */
     switchToVideo(videoId) {
         if (!videoId) {
-            console.warn('OpenAI: videoId为空，无法切换对话上下文');
+            Logger.warn('OpenAI: videoId is empty, cannot switch conversation context');
             return;
         }
 
         const previousVideoId = this.currentVideoId;
         this.currentVideoId = videoId;
 
-        // 如果是新视频，初始化对话历史
+        // If it's a new video, initialize conversation history
         if (!this.videoConversations.has(videoId)) {
             this.videoConversations.set(videoId, []);
-            console.log('OpenAI: 为新视频创建对话历史:', videoId);
+            Logger.log('OpenAI: Created conversation history for new video:', videoId);
         } else {
-            console.log('OpenAI: 切换到已有视频的对话历史:', videoId);
+            Logger.log('OpenAI: Switched to existing video conversation history:', videoId);
             const history = this.videoConversations.get(videoId);
-            console.log(`OpenAI: 恢复 ${history.length} 条历史对话`);
+            Logger.log(`OpenAI: Restored ${history.length} conversation records`);
         }
 
-        // 限制缓存的视频数量
+        // Limit the number of cached videos
         if (this.videoConversations.size > this.maxVideoCount) {
             this.cleanupOldConversations();
         }
 
         if (previousVideoId !== videoId) {
-            console.log(`OpenAI: 从视频 ${previousVideoId} 切换到 ${videoId}`);
+            Logger.log(`OpenAI: Switched from video ${previousVideoId} to ${videoId}`);
         }
     }
 
     /**
-     * 清理最老的对话历史（LRU策略）
+     * Clean up oldest conversation history (LRU strategy)
      */
     cleanupOldConversations() {
         const videoIds = Array.from(this.videoConversations.keys());
-        const oldestVideoId = videoIds[0]; // Map保持插入顺序，第一个是最老的
+        const oldestVideoId = videoIds[0]; // Map maintains insertion order, first is oldest
         
         this.videoConversations.delete(oldestVideoId);
-        console.log('OpenAI: 清理最老的对话历史:', oldestVideoId);
+        Logger.log('OpenAI: Cleaned up oldest conversation history:', oldestVideoId);
     }
 
     /**
-     * 获取当前视频的对话历史
+     * Get current video's conversation history
      */
     getCurrentConversationHistory() {
         if (!this.currentVideoId) {
@@ -130,11 +130,11 @@ class OpenAIVoiceAssistant {
     }
 
     /**
-     * 添加优化的对话历史 (支持音频ID和动态context)
+     * Add optimized conversation history (supports audio ID and dynamic context)
      */
     addOptimizedConversationHistory(role, content, audioBase64 = null, audioId = null, context = null) {
         if (!this.currentVideoId) {
-            console.warn('Audio: 当前没有活跃视频，无法保存对话');
+            Logger.warn('Audio: No active video, cannot save conversation');
             return;
         }
 
@@ -145,7 +145,7 @@ class OpenAIVoiceAssistant {
             timestamp: Date.now()
         };
         
-        // 为用户消息添加音频信息和动态context
+        // Add audio information and dynamic context for user messages
         if (role === 'user') {
             if (audioId) {
                 historyItem.audioId = audioId;
@@ -153,7 +153,7 @@ class OpenAIVoiceAssistant {
             if (audioBase64) {
                 historyItem.audioBase64 = audioBase64;
             }
-            // 保存当时的动态context（时间戳和相关字幕）
+            // Save the dynamic context at that time (timestamp and relevant subtitles)
             if (context) {
                 historyItem.dynamicContext = `Current video playback time: ${Math.floor(context.currentTime)} seconds
 
@@ -162,24 +162,24 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             }
         }
         
-        // 为助手消息添加音频ID (如果有)
+        // Add audio ID for assistant messages (if available)
         if (role === 'assistant' && audioId) {
             historyItem.audioId = audioId;
         }
         
         conversation.push(historyItem);
 
-        // 更新Map
+        // Update Map
         this.videoConversations.delete(this.currentVideoId);
         this.videoConversations.set(this.currentVideoId, conversation);
 
-        // 清理过长的历史记录
+        // Clean up overly long history
         if (conversation.length > this.maxHistoryLength) {
             for (let i = 0; i < conversation.length - 1; i++) {
                 if (conversation[i].role === 'user' && 
                     conversation[i + 1].role === 'assistant') {
                     conversation.splice(i, 2);
-                    console.log('Audio: 当前视频对话历史过长，移除最早的一轮对话');
+                    Logger.log('Audio: Current video conversation history too long, removing earliest conversation round');
                     break;
                 }
             }
@@ -187,21 +187,21 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 添加消息到当前视频的对话历史 (向后兼容)
-     * @deprecated 使用 addOptimizedConversationHistory 代替
+     * Add message to current video's conversation history (backward compatibility)
+     * @deprecated Use addOptimizedConversationHistory instead
      */
     addToConversationHistory(role, content) {
         this.addOptimizedConversationHistory(role, content, null, null, null);
     }
 
     /**
-     * 获取用于API调用的完整消息数组
-     * @deprecated 建议直接使用 getCurrentConversationHistory 和手动构建消息数组
+     * Get complete message array for API calls
+     * @deprecated Recommend using getCurrentConversationHistory and manually building message array
      */
     getConversationMessages(systemMessage = null) {
         const messages = [];
         
-        // 添加系统消息（如果提供）
+        // Add system message (if provided)
         if (systemMessage) {
             messages.push({
                 role: 'system',
@@ -209,7 +209,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             });
         }
 
-        // 添加当前视频的历史对话（排除timestamp）
+        // Add current video's conversation history (excluding timestamp)
         const history = this.getCurrentConversationHistory();
         history.forEach(msg => {
             messages.push({
@@ -222,28 +222,28 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 重置指定视频的对话历史
+     * Reset specified video's conversation history
      */
     resetVideoConversation(videoId = null) {
         const targetVideoId = videoId || this.currentVideoId;
         
         if (targetVideoId && this.videoConversations.has(targetVideoId)) {
             this.videoConversations.set(targetVideoId, []);
-            console.log('OpenAI: 重置视频对话历史:', targetVideoId);
+            Logger.log('OpenAI: Reset video conversation history:', targetVideoId);
         }
     }
 
     /**
-     * 清除所有对话历史（页面卸载时调用）
+     * Clear all conversation history (called when page unloads)
      */
     clearAllConversations() {
         this.videoConversations.clear();
         this.currentVideoId = null;
-        console.log('OpenAI: 已清除所有对话历史');
+        Logger.log('OpenAI: Cleared all conversation history');
     }
 
     /**
-     * 获取所有视频的对话摘要
+     * Get conversation summary for all videos
      */
     getAllVideosSummary() {
         const summary = {};
@@ -266,30 +266,30 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 调试功能：保存录音并创建播放界面
+     * Debug feature: Save recording and create playback interface
      */
     debugSaveRecording(audioBlob) {
         try {
-            // 创建blob URL用于播放
+            // Create blob URL for playback
             const audioUrl = URL.createObjectURL(audioBlob);
             
-            // 记录录音信息
-            console.log('🎵 录音调试信息 (发送给转录API前):');
-            console.log('- 文件大小:', (audioBlob.size / 1024).toFixed(2), 'KB');
-            console.log('- 文件类型:', audioBlob.type);
-            console.log('- 播放URL:', audioUrl);
+            // Log recording information
+            Logger.log('🎵 Recording debug info (before sending to transcription API):');
+            Logger.log('- File size:', (audioBlob.size / 1024).toFixed(2), 'KB');
+            Logger.log('- File type:', audioBlob.type);
+            Logger.log('- Playback URL:', audioUrl);
             
-            // 移除之前的调试播放器（如果存在）
+            // Remove previous debug player (if exists)
             const existingPlayer = document.getElementById('voice-debug-player');
             if (existingPlayer) {
-                URL.revokeObjectURL(existingPlayer.audioUrl); // 释放之前的URL
+                URL.revokeObjectURL(existingPlayer.audioUrl); // Release previous URL
                 existingPlayer.remove();
             }
             
-            // 创建播放界面
+            // Create playback interface
             const debugContainer = document.createElement('div');
             debugContainer.id = 'voice-debug-player';
-            debugContainer.audioUrl = audioUrl; // 保存URL用于清理
+            debugContainer.audioUrl = audioUrl; // Save URL for cleanup
             debugContainer.style.cssText = `
                 position: fixed;
                 top: 10px;
@@ -308,30 +308,30 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             
             const timestamp = new Date().toLocaleTimeString();
             debugContainer.innerHTML = `
-                <div style="margin-bottom: 8px; font-weight: bold; color: #4CAF50;">🎵 录音调试 (转录前)</div>
-                <div style="margin-bottom: 5px; color: #999;">时间: ${timestamp}</div>
-                <div style="margin-bottom: 5px; color: #ccc;">大小: ${(audioBlob.size / 1024).toFixed(2)} KB</div>
-                <div style="margin-bottom: 8px; color: #ccc;">类型: ${audioBlob.type}</div>
+                <div style="margin-bottom: 8px; font-weight: bold; color: #4CAF50;">🎵 Recording Debug (Pre-transcription)</div>
+                <div style="margin-bottom: 5px; color: #999;">Time: ${timestamp}</div>
+                <div style="margin-bottom: 5px; color: #ccc;">Size: ${(audioBlob.size / 1024).toFixed(2)} KB</div>
+                <div style="margin-bottom: 8px; color: #ccc;">Type: ${audioBlob.type}</div>
                 <audio controls style="width: 100%; margin-bottom: 8px;">
                     <source src="${audioUrl}" type="${audioBlob.type}">
-                    您的浏览器不支持音频播放
+                    Your browser does not support audio playback
                 </audio>
                 <div style="text-align: center;">
-                    <button id="debug-close-btn" style="background: #f44336; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 8px;">关闭</button>
-                    <button id="debug-download-btn" style="background: #2196F3; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">下载</button>
+                    <button id="debug-close-btn" style="background: #f44336; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 8px;">Close</button>
+                    <button id="debug-download-btn" style="background: #2196F3; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Download</button>
                 </div>
             `;
             
-            // 添加到页面
+            // Add to page
             document.body.appendChild(debugContainer);
             
-            // 关闭按钮事件
+            // Close button event
             document.getElementById('debug-close-btn').addEventListener('click', () => {
-                URL.revokeObjectURL(audioUrl); // 释放内存
+                URL.revokeObjectURL(audioUrl); // Release memory
                 debugContainer.remove();
             });
             
-            // 下载按钮事件
+            // Download button event
             document.getElementById('debug-download-btn').addEventListener('click', () => {
                 const link = document.createElement('a');
                 link.href = audioUrl;
@@ -339,7 +339,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
                 link.click();
             });
             
-            // 5分钟后自动清理
+            // Auto cleanup after 5 minutes
             setTimeout(() => {
                 if (document.getElementById('voice-debug-player')) {
                     URL.revokeObjectURL(audioUrl);
@@ -348,23 +348,25 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             }, 5 * 60 * 1000);
             
         } catch (error) {
-            console.error('OpenAI: 创建调试播放器失败:', error);
+            Logger.error('OpenAI: Failed to create debug player:', error);
         }
     }
 
     /**
-     * 音频转录 - 使用 gpt-4o-mini-transcribe
+     * Audio transcription - using gpt-4o-mini-transcribe
      */
     async transcribeAudio(audioBlob, options = {}) {
         try {
-            // 调试功能：保存录音用于播放
-            this.debugSaveRecording(audioBlob);
+            // Debug feature: save recording for playback
+            if (Logger.isDebugMode) {
+                this.debugSaveRecording(audioBlob);
+            }
             
             const formData = new FormData();
             formData.append('file', audioBlob, 'audio.wav');
             formData.append('model', 'gpt-4o-mini-transcribe');
             
-            // 默认使用text格式获取纯文本结果
+            // Default to text format for plain text results
             const responseFormat = options.response_format || 'text';
             formData.append('response_format', responseFormat);
             
@@ -388,10 +390,10 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(`转录API错误: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+                throw new Error(`Transcription API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
             }
 
-            // 根据响应格式处理返回结果
+            // Handle return result based on response format
             if (responseFormat === 'text') {
                 return await response.text();
             } else {
@@ -400,28 +402,28 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             }
 
         } catch (error) {
-            console.error('音频转录失败:', error);
+            Logger.error('Audio transcription failed:', error);
             throw error;
         }
     }
 
     /**
-     * 优化的音频对话处理 - 分离转录和对话
+     * Optimized audio conversation processing - separating transcription and conversation
      */
     async optimizedAudioCompletion(audioBlob, context) {
         try {
             this.switchToVideo(context.videoId);
             
-            // 步骤1: 先用gpt-4o-mini-transcribe转录音频
-            console.log('🎤 转录用户语音...');
+            // Step 1: First transcribe audio with gpt-4o-mini-transcribe
+            Logger.log('🎤 Transcribing user voice...');
             const transcript = await this.transcribeAudio(audioBlob, {
                 response_format: 'text',
                 prompt: 'transcribe everything, don\'t miss any words',
                 temperature: 0.0
             });
-            console.log('📝 转录结果:', transcript);
+            Logger.log('📝 Transcription result:', transcript);
             
-            // 步骤2: 构建文字消息数组
+            // Step 2: Build text message array
             const messages = this.buildOptimizedTextMessages(transcript, context);
             
             const requestBody = {
@@ -436,9 +438,9 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
                 temperature: 1.0
             };
 
-            // 输出请求大小统计
+            // Output request size statistics
             const requestSize = JSON.stringify(requestBody).length;
-            console.log(`📊 请求大小: ${(requestSize / 1024).toFixed(1)}KB`);
+            Logger.log(`📊 Request size: ${(requestSize / 1024).toFixed(1)}KB`);
 
             const response = await fetch(`${this.baseURL}/chat/completions`, {
                 method: 'POST',
@@ -451,32 +453,32 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(`Audio API错误: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+                throw new Error(`Audio API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
             }
 
             const result = await response.json();
             const choice = result.choices[0];
             
-            // 提取并缓存音频信息
+            // Extract and cache audio information
             const textResponse = choice.message.content || '';
             const audioInfo = choice.message.audio;
             let audioResponse = null;
             
             if (audioInfo) {
-                // 缓存音频数据和ID
+                // Cache audio data and ID
                 this.cacheAudioData(audioInfo);
                 
-                // 转换音频数据
+                // Convert audio data
                 audioResponse = await this.base64ToArrayBuffer(audioInfo.data);
                 
-                console.log(`🎵 音频ID: ${audioInfo.id}, 过期时间: ${new Date(audioInfo.expires_at * 1000).toLocaleString()}`);
+                Logger.log(`🎵 Audio ID: ${audioInfo.id}, Expiry time: ${new Date(audioInfo.expires_at * 1000).toLocaleString()}`);
             }
             
-            // 保存对话历史 (使用优化格式，用户消息不保存音频数据)
+            // Save conversation history (using optimized format, user messages don't save audio data)
             this.addOptimizedConversationHistory('user', transcript, null, null, context);
             this.addOptimizedConversationHistory('assistant', textResponse, null, audioInfo?.id);
             
-            // 输出token使用情况
+            // Output token usage
             if (result.usage) {
                 this.logTokenUsage(result.usage);
             }
@@ -488,13 +490,13 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             };
 
         } catch (error) {
-            console.error('优化音频对话处理失败:', error);
+            Logger.error('Optimized audio conversation processing failed:', error);
             throw error;
         }
     }
 
     /**
-     * 缓存音频数据
+     * Cache audio data
      */
     cacheAudioData(audioInfo) {
         if (!audioInfo || !audioInfo.id) return;
@@ -506,11 +508,11 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             cachedAt: Math.floor(Date.now() / 1000)
         });
         
-        console.log(`💾 音频已缓存: ${audioInfo.id} (${this.audioCache.size} 个音频在缓存中)`);
+        Logger.log(`💾 Audio cached: ${audioInfo.id} (${this.audioCache.size} audios in cache)`);
     }
 
     /**
-     * 播放音频数据
+     * Play audio data
      */
     async playAudio(audioData) {
         return new Promise((resolve, reject) => {
@@ -534,7 +536,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 录制音频（传统固定时长方式，作为备选）
+     * Record audio (traditional fixed-duration method, as backup)
      */
     async recordAudio(duration = 5000) {
         return new Promise(async (resolve, reject) => {
@@ -579,7 +581,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 使用智能录音器录制音频（VAD自动检测）
+     * Record audio using smart recorder (VAD automatic detection)
      */
     async recordAudioSmart(onStatusUpdate) {
         return new Promise(async (resolve, reject) => {
@@ -592,13 +594,13 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
                 recorder.setCallbacks({
                     onSpeechStart: () => {},
                     onSpeechEnd: (audioBlob) => {
-                        onStatusUpdate('录音完成', 'processing');
-                        // 清除超时定时器
+                        onStatusUpdate('Recording completed', 'processing');
+                        // Clear timeout timer
                         if (timeoutId) {
                             clearTimeout(timeoutId);
                             timeoutId = null;
                         }
-                        // VAD会自动销毁，无需手动调用destroy
+                        // VAD automatically destroys, no need to manually call destroy
                         resolve(audioBlob);
                     },
                     onStatusUpdate: onStatusUpdate
@@ -606,27 +608,27 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
 
                 await recorder.startSmartRecording();
 
-                // 设置超时保护（最多30秒）
+                // Set timeout protection (maximum 30 seconds)
                 timeoutId = setTimeout(() => {
                     if (recorder && recorder.recording) {
-                        console.log('Voice: 录音超时，正在清理资源...');
-                        recorder.forceDestroy(); // 超时时强制释放麦克风
-                        reject(new Error('录音超时，请重试'));
+                        Logger.log('Voice: Recording timeout, cleaning up resources...');
+                        recorder.forceDestroy(); // Force release microphone on timeout
+                        reject(new Error('Recording timeout, please try again'));
                     }
                 }, 30000);
 
             } catch (error) {
-                // 清除超时定时器
+                // Clear timeout timer
                 if (timeoutId) {
                     clearTimeout(timeoutId);
                 }
                 
-                // 确保清理录音器资源
+                // Ensure recorder resources are cleaned up
                 if (recorder) {
                     try {
                         recorder.forceDestroy();
                     } catch (destroyError) {
-                        console.error('Voice: 清理录音器失败:', destroyError);
+                        Logger.error('Voice: Failed to cleanup recorder:', destroyError);
                     }
                 }
                 
@@ -636,12 +638,12 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 构建优化的文字消息数组 - 支持OpenAI prefix caching
+     * Build optimized text message array - supports OpenAI prefix caching
      */
     buildOptimizedTextMessages(userQuestion, context) {
         this.switchToVideo(context.videoId);
         
-        // 静态系统消息 (可被OpenAI缓存)
+        // Static system message (can be cached by OpenAI)
         const staticSystemMessage = `You are a YouTube video assistant that answers questions based on video subtitle content.
 
 Video: ${context.videoTitle || 'Unknown Title'}
@@ -652,7 +654,7 @@ ${context.fullTranscript || 'Loading subtitles...'}
 
 Please provide concise answers (within 30 words) since your response will be converted to speech. Focus on content relevant to the current time position. When asked to repeat what was just said in the video, provide word-by-word accurate repetition without omitting details.`;
 
-        // 动态系统消息 (当前时间戳和相关字幕)
+        // Dynamic system message (current timestamp and relevant subtitles)
         const dynamicSystemMessage = `Current video playback time: ${Math.floor(context.currentTime)} seconds
 
 Subtitle content around current time position:
@@ -661,39 +663,39 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
         const messages = [
             {
                 role: 'system',
-                content: staticSystemMessage // 静态内容，可被缓存
+                content: staticSystemMessage // Static content, can be cached
             }
         ];
         
-        // 添加历史对话 (在每个用户输入前插入动态context)
+        // Add conversation history (insert dynamic context before each user input)
         const conversationHistory = this.getCurrentConversationHistory();
         
         conversationHistory.forEach((msg, index) => {
             if (msg.role === 'user') {
-                // 在用户消息前插入动态系统消息
+                // Insert dynamic system message before user message
                 messages.push({
                     role: 'system',
-                    content: msg.dynamicContext || dynamicSystemMessage // 使用历史的context或当前的
+                    content: msg.dynamicContext || dynamicSystemMessage // Use historical context or current one
                 });
                 
-                // 用户消息：现在都是文字消息
+                // User message: now all are text messages
                 messages.push({
                     role: 'user',
                     content: msg.content
                 });
             } else {
-                // 助手回复：使用音频ID引用（如果有的话）
+                // Assistant reply: use audio ID reference (if available)
                 if (msg.audioId && this.audioCache.has(msg.audioId)) {
-                    console.log(`🔄 引用助手音频ID: ${msg.audioId}`);
+                    Logger.log(`🔄 Referencing assistant audio ID: ${msg.audioId}`);
                     messages.push({
                         role: 'assistant',
-                        content: [], // 空内容
+                        content: [], // Empty content
                         audio: {
                             id: msg.audioId
                         }
                     });
                 } else {
-                    // 纯文本回复
+                    // Plain text reply
                     messages.push({
                         role: 'assistant',
                         content: msg.content
@@ -702,46 +704,46 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             }
         });
         
-        // 在当前用户输入前插入最新的动态系统消息
+        // Insert latest dynamic system message before current user input
         messages.push({
             role: 'system',
             content: dynamicSystemMessage
         });
         
-        // 添加当前用户文字输入
+        // Add current user text input
         messages.push({
             role: 'user',
             content: userQuestion
         });
         
-        console.log(`📝 消息数组长度: ${messages.length}, 历史对话: ${conversationHistory.length}`);
-        console.log(`💾 静态系统消息长度: ${staticSystemMessage.length} 字符 (可缓存)`);
-        console.log(`🔄 动态系统消息长度: ${dynamicSystemMessage.length} 字符`);
+        Logger.log(`📝 Message array length: ${messages.length}, Conversation history: ${conversationHistory.length}`);
+        Logger.log(`💾 Static system message length: ${staticSystemMessage.length} characters (cacheable)`);
+        Logger.log(`🔄 Dynamic system message length: ${dynamicSystemMessage.length} characters`);
         
         return messages;
     }
 
     /**
-     * 构建优化的消息数组 - 支持OpenAI prefix caching (音频版本，已弃用)
-     * @deprecated 使用 buildOptimizedTextMessages 代替
+     * Build optimized message array - supports OpenAI prefix caching (audio version, deprecated)
+     * @deprecated Use buildOptimizedTextMessages instead
      */
     buildOptimizedMessages(currentAudioBase64, context) {
-        console.warn('buildOptimizedMessages (音频版本) 已弃用，请使用 buildOptimizedTextMessages');
-        return this.buildOptimizedTextMessages('语音输入', context);
+        Logger.warn('buildOptimizedMessages (audio version) is deprecated, please use buildOptimizedTextMessages');
+        return this.buildOptimizedTextMessages('Voice input', context);
     }
 
     /**
-     * 构建YouTube助手的对话消息（向后兼容）
-     * @deprecated 使用 buildOptimizedMessages 代替
+     * Build YouTube assistant conversation messages (backward compatibility)
+     * @deprecated Use buildOptimizedMessages instead
      */
     buildYouTubeAssistantMessages(userQuestion, context) {
-        console.warn('buildYouTubeAssistantMessages 已弃用，请使用 buildOptimizedMessages');
-        // 这个方法现在只用于向后兼容，实际不会被调用
+        Logger.warn('buildYouTubeAssistantMessages is deprecated, please use buildOptimizedMessages');
+        // This method is now only for backward compatibility, won't actually be called
         return [];
     }
 
     /**
-     * 智能语音查询处理流程（分离转录和对话）
+     * Smart voice query processing flow (separating transcription and conversation)
      */
     async processVoiceQuerySmart(context, onStatusUpdate) {
         const startTime = performance.now();
@@ -754,26 +756,26 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
         };
 
         try {
-            // onStatusUpdate('准备录音，请开始说话...', 'recording');
+            // onStatusUpdate('Preparing to record, please start speaking...', 'recording');
             
-            // 步骤1: 智能录制音频
+            // Step 1: Smart audio recording
             const recordingStart = performance.now();
             const audioBlob = await this.recordAudioSmart(onStatusUpdate);
             timings.recording = performance.now() - recordingStart;
             
-            // 步骤2: 语音转录 + AI对话生成 (分离处理)
-            onStatusUpdate('转录并生成回复中...', 'processing');
+            // Step 2: Voice transcription + AI conversation generation (separated processing)
+            onStatusUpdate('Transcribing and generating response...', 'processing');
             const audioCompletionStart = performance.now();
             
             const result = await this.optimizedAudioCompletion(audioBlob, context);
             timings.audioCompletion = performance.now() - audioCompletionStart;
             
-            console.log('用户问题:', result.transcript);
-            console.log('AI回复:', result.textResponse);
+            Logger.log('User question:', result.transcript);
+            Logger.log('AI response:', result.textResponse);
             
-            // 步骤3: 播放回复
+            // Step 3: Play response
             if (result.audioResponse) {
-                onStatusUpdate('播放回复...', 'playing');
+                onStatusUpdate('Playing response...', 'playing');
                 const playbackStart = performance.now();
                 await this.playAudio(result.audioResponse);
                 timings.audioPlayback = performance.now() - playbackStart;
@@ -782,7 +784,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             timings.total = performance.now() - startTime;
             
             this.logTimingStats(timings, 'Smart Voice Query (Separated)');
-            onStatusUpdate(`完成`, 'success');
+            onStatusUpdate(`Completed`, 'success');
             
             return {
                 userQuestion: result.transcript,
@@ -793,15 +795,15 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
 
         } catch (error) {
             timings.total = performance.now() - startTime;
-            console.error('智能语音处理失败:', error);
-            console.log('⏱️ 失败前的处理时间:', this.formatTimings(timings));
+            Logger.error('Smart voice processing failed:', error);
+            Logger.log('⏱️ Processing time before failure:', this.formatTimings(timings));
             
-            onStatusUpdate('错误: ' + error.message, 'error');
+            onStatusUpdate('Error: ' + error.message, 'error');
             
-            // 如果VAD失败，尝试使用传统录音方式
-            if (error.message.includes('VAD') || error.message.includes('语音检测')) {
-                console.log('尝试使用传统录音方式...');
-                onStatusUpdate('切换到传统录音模式...', 'info');
+            // If VAD fails, try traditional recording method
+            if (error.message.includes('VAD') || error.message.includes('voice detection')) {
+                Logger.log('Trying traditional recording method...');
+                onStatusUpdate('Switching to traditional recording mode...', 'info');
                 return await this.processVoiceQuery(context, onStatusUpdate);
             }
             
@@ -810,7 +812,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 传统录音处理流程（分离转录和对话）
+     * Traditional recording processing flow (separating transcription and conversation)
      */
     async processVoiceQuery(context, onStatusUpdate) {
         const startTime = performance.now();
@@ -823,26 +825,26 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
         };
 
         try {
-            onStatusUpdate('开始录音...', 'recording');
+            onStatusUpdate('Starting recording...', 'recording');
             
-            // 步骤1: 录制音频
+            // Step 1: Record audio
             const recordingStart = performance.now();
             const audioBlob = await this.recordAudio(5000);
             timings.recording = performance.now() - recordingStart;
             
-            // 步骤2: 语音转录 + AI对话生成 (分离处理)
-            onStatusUpdate('转录并生成回复中...', 'processing');
+            // Step 2: Voice transcription + AI conversation generation (separated processing)
+            onStatusUpdate('Transcribing and generating response...', 'processing');
             const audioCompletionStart = performance.now();
             
             const result = await this.optimizedAudioCompletion(audioBlob, context);
             timings.audioCompletion = performance.now() - audioCompletionStart;
             
-            console.log('用户问题:', result.transcript);
-            console.log('AI回复:', result.textResponse);
+            Logger.log('User question:', result.transcript);
+            Logger.log('AI response:', result.textResponse);
 
-            // 步骤3: 播放回复
+            // Step 3: Play response
             if (result.audioResponse) {
-                onStatusUpdate('播放回复...', 'playing');
+                onStatusUpdate('Playing response...', 'playing');
                 const playbackStart = performance.now();
                 await this.playAudio(result.audioResponse);
                 timings.audioPlayback = performance.now() - playbackStart;
@@ -851,7 +853,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             timings.total = performance.now() - startTime;
             
             this.logTimingStats(timings, 'Traditional Voice Query (Separated)');
-            onStatusUpdate(`完成`, 'success');
+            onStatusUpdate(`Completed`, 'success');
             
             return {
                 userQuestion: result.transcript,
@@ -862,16 +864,16 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
 
         } catch (error) {
             timings.total = performance.now() - startTime;
-            console.error('传统语音处理失败:', error);
-            console.log('⏱️ 失败前的处理时间:', this.formatTimings(timings));
+            Logger.error('Traditional voice processing failed:', error);
+            Logger.log('⏱️ Processing time before failure:', this.formatTimings(timings));
             
-            onStatusUpdate('错误: ' + error.message, 'error');
+            onStatusUpdate('Error: ' + error.message, 'error');
             throw error;
         }
     }
 
     /**
-     * 获取对话历史
+     * Get conversation history
      */
     getConversationHistory() {
         return this.getCurrentConversationHistory().map(msg => ({
@@ -882,15 +884,15 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 清除对话历史
+     * Clear conversation history
      */
     clearConversationHistory() {
         this.resetVideoConversation();
-        console.log('OpenAI: 对话历史已手动清除');
+        Logger.log('OpenAI: Conversation history manually cleared');
     }
 
     /**
-     * 获取对话摘要信息
+     * Get conversation summary information
      */
     getConversationSummary() {
         const userMessages = this.getCurrentConversationHistory().filter(msg => msg.role === 'user').length;
@@ -907,7 +909,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 导出对话历史（用于调试或保存）
+     * Export conversation history (for debugging or saving)
      */
     exportConversationHistory() {
         return {
@@ -918,7 +920,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 格式化时间统计信息
+     * Format timing statistics
      */
     formatTimings(timings) {
         const format = (ms) => `${Math.round(ms)}ms`;
@@ -934,70 +936,70 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 输出详细的时间统计日志
+     * Output detailed timing statistics logs
      */
     logTimingStats(timings, operation) {
         const formatted = this.formatTimings(timings);
         
-        console.log(`\n⏱️ ===== ${operation} 时间统计 =====`);
-        console.log(`🎤 录音阶段:     ${formatted.recording}`);
+        Logger.log(`\n⏱️ ===== ${operation} Timing Statistics =====`);
+        Logger.log(`🎤 Recording phase:      ${formatted.recording}`);
         
         if (timings.audioCompletion) {
-            console.log(`🎯 转录+对话:    ${formatted.audioCompletion}`);
+            Logger.log(`🎯 Transcription+Chat:   ${formatted.audioCompletion}`);
         } else if (timings.audioProcessing) {
-            console.log(`🎯 音频处理:     ${formatted.audioProcessing}`);
+            Logger.log(`🎯 Audio processing:     ${formatted.audioProcessing}`);
         } else {
-            // 旧版本兼容
-            console.log(`📝 语音转录:     ${formatted.transcription || '0ms'}`);
-            console.log(`🤖 AI回复生成:   ${formatted.chatCompletion || '0ms'}`);
-            console.log(`🔊 文字转语音:   ${formatted.textToSpeech || '0ms'}`);
+            // Legacy version compatibility
+            Logger.log(`📝 Voice transcription:  ${formatted.transcription || '0ms'}`);
+            Logger.log(`🤖 AI response generation: ${formatted.chatCompletion || '0ms'}`);
+            Logger.log(`🔊 Text-to-speech:       ${formatted.textToSpeech || '0ms'}`);
         }
         
-        console.log(`📢 音频播放:     ${formatted.audioPlayback}`);
-        console.log(`⏱️ 总耗时:       ${formatted.total}`);
-        console.log(`================================\n`);
+        Logger.log(`📢 Audio playback:       ${formatted.audioPlayback}`);
+        Logger.log(`⏱️ Total time:           ${formatted.total}`);
+        Logger.log(`================================\n`);
         
-        // 计算处理时间占比
+        // Calculate processing time percentage
         const processingTime = timings.audioCompletion || timings.audioProcessing;
         if (processingTime) {
             const processingPercentage = Math.round((processingTime / timings.total) * 100);
-            console.log(`📊 AI处理时间: ${Math.round(processingTime)}ms (${processingPercentage}% of total)`);
+            Logger.log(`📊 AI processing time: ${Math.round(processingTime)}ms (${processingPercentage}% of total)`);
         }
     }
 
     /**
-     * 记录Token使用情况和缓存效率
+     * Log token usage and cache efficiency
      */
     logTokenUsage(usage) {
-        console.log('📊 === Token使用详情 ===');
-        console.log(`总tokens: ${usage.total_tokens}`);
-        console.log(`输入tokens: ${usage.prompt_tokens}`);
-        console.log(`输出tokens: ${usage.completion_tokens}`);
+        Logger.log('📊 === Token Usage Details ===');
+        Logger.log(`Total tokens: ${usage.total_tokens}`);
+        Logger.log(`Input tokens: ${usage.prompt_tokens}`);
+        Logger.log(`Output tokens: ${usage.completion_tokens}`);
         
         if (usage.prompt_tokens_details) {
             const details = usage.prompt_tokens_details;
-            console.log(`输入详情:`);
-            console.log(`  📝 文字tokens: ${details.text_tokens || 0}`);
-            console.log(`  🎵 音频tokens: ${details.audio_tokens || 0}`);
-            console.log(`  🖼️ 图片tokens: ${details.image_tokens || 0}`);
+            Logger.log(`Input details:`);
+            Logger.log(`  📝 Text tokens: ${details.text_tokens || 0}`);
+            Logger.log(`  🎵 Audio tokens: ${details.audio_tokens || 0}`);
+            Logger.log(`  🖼️ Image tokens: ${details.image_tokens || 0}`);
         }
         
         if (usage.completion_tokens_details) {
             const details = usage.completion_tokens_details;
-            console.log(`输出详情:`);
-            console.log(`  📝 文字tokens: ${details.text_tokens || 0}`);  
-            console.log(`  🎵 音频tokens: ${details.audio_tokens || 0}`);
+            Logger.log(`Output details:`);
+            Logger.log(`  📝 Text tokens: ${details.text_tokens || 0}`);  
+            Logger.log(`  🎵 Audio tokens: ${details.audio_tokens || 0}`);
         }
         
-        // 缓存效率统计
+        // Cache efficiency statistics
         const summary = this.getConversationSummaryWithAudio();
-        console.log(`💾 助手音频缓存效率: ${summary.cacheHitRate} (${summary.cachedAudioReferences}/${summary.assistantAudioMessages})`);
-        console.log(`🎤 用户音频消息: ${summary.userAudioMessages} (始终重新发送)`);
-        console.log('=====================================');
+        Logger.log(`💾 Assistant audio cache efficiency: ${summary.cacheHitRate} (${summary.cachedAudioReferences}/${summary.assistantAudioMessages})`);
+        Logger.log(`🎤 User audio messages: ${summary.userAudioMessages} (always resent)`);
+        Logger.log('=====================================');
     }
 
     /**
-     * 获取对话历史摘要 (包含音频信息)
+     * Get conversation history summary (including audio information)
      */
     getConversationSummaryWithAudio() {
         const history = this.getCurrentConversationHistory();
@@ -1028,7 +1030,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * Blob转Base64
+     * Convert Blob to Base64
      */
     async blobToBase64(blob) {
         return new Promise((resolve, reject) => {
@@ -1043,7 +1045,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * Base64转ArrayBuffer
+     * Convert Base64 to ArrayBuffer
      */
     async base64ToArrayBuffer(base64) {
         const binaryString = atob(base64);
@@ -1054,14 +1056,14 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
         return bytes.buffer;
     }
 
-    // ============ 向后兼容方法 ============
+    // ============ Backward Compatibility Methods ============
 
     /**
-     * 重置对话历史（向后兼容）
-     * @deprecated 使用 resetVideoConversation 或 switchToVideo 代替
+     * Reset conversation history (backward compatibility)
+     * @deprecated Use resetVideoConversation or switchToVideo instead
      */
     resetConversation(videoId = null) {
-        console.warn('OpenAI: resetConversation已弃用，建议使用resetVideoConversation');
+        Logger.warn('OpenAI: resetConversation is deprecated, recommend using resetVideoConversation');
         if (videoId) {
             this.switchToVideo(videoId);
             this.resetVideoConversation(videoId);
@@ -1071,14 +1073,14 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * 检查视频变化（向后兼容）
-     * @deprecated 使用 switchToVideo 代替
+     * Check video change (backward compatibility)
+     * @deprecated Use switchToVideo instead
      */
     checkVideoChange(videoId) {
-        console.warn('OpenAI: checkVideoChange已弃用，建议使用switchToVideo');
+        Logger.warn('OpenAI: checkVideoChange is deprecated, recommend using switchToVideo');
         this.switchToVideo(videoId);
     }
 }
 
-// 导出为全局变量
+// Export as global variable
 window.OpenAIVoiceAssistant = OpenAIVoiceAssistant; 
