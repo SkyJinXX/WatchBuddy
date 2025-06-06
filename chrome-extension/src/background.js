@@ -94,10 +94,47 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             language: currentVideoSubtitles.language,
             source: currentVideoSubtitles.source || 'unknown'
         });
+    } else if (request.action === 'send_analytics') {
+        sendAnalyticsEvent(request.payload, request.measurementId, request.apiSecret, sendResponse);
+        return true; // 保持消息通道开放
     } else {
         console.log('未知消息类型:', request.action);
     }
 });
+
+/**
+ * 发送Analytics事件到Google Analytics
+ */
+async function sendAnalyticsEvent(payload, measurementId, apiSecret, sendResponse) {
+    try {
+        const url = `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            console.log('Analytics event sent successfully');
+            sendResponse({ success: true });
+        } else {
+            console.error('Analytics event failed:', response.status);
+            sendResponse({ 
+                success: false, 
+                error: `HTTP ${response.status}` 
+            });
+        }
+    } catch (error) {
+        console.error('Analytics request failed:', error);
+        sendResponse({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+}
 
 /**
  * 获取API密钥

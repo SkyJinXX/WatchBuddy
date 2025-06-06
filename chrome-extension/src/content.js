@@ -24,6 +24,9 @@ class YouTubeVoiceAssistant {
         // Configuration options
         this.contextSentencesBefore = 4; // Number of sentences before current time (configurable)
         
+        // Analytics
+        this.analytics = new Analytics();
+        
         this.init();
     }
 
@@ -68,6 +71,9 @@ class YouTubeVoiceAssistant {
                 case 'manual_subtitle_cleared':
                     this.handleManualSubtitleCleared(request.videoId);
                     break;
+                case 'analytics_setting_changed':
+                    this.analytics.setEnabled(request.enabled);
+                    break;
             }
         });
     }
@@ -75,7 +81,7 @@ class YouTubeVoiceAssistant {
     /**
      * Handle manual subtitle upload
      */
-    async handleManualSubtitleUploaded(videoId, subtitleData) {
+    async handleManualSubtitleUploaded(videoId, subtitleData, fromCache = false) {
         Logger.log('Content: Received manually uploaded subtitles:', videoId, subtitleData);
         
         const currentVideoId = this.getCurrentVideoId();
@@ -90,6 +96,13 @@ class YouTubeVoiceAssistant {
             
             Logger.log('Content: Manual subtitle parsing complete:', this.manualSubtitle);
             this.updateStatus('✅ Manual subtitles loaded', 'success');
+            
+            // Track manual subtitle loading
+            try {
+                this.analytics.trackSubtitleLoad('manual', fromCache);
+            } catch (error) {
+                Logger.log('Content: Analytics tracking failed:', error.message);
+            }
             
             // Notify background script manual subtitles are ready
             chrome.runtime.sendMessage({
@@ -118,6 +131,13 @@ class YouTubeVoiceAssistant {
             
             Logger.log('Content: Cached API subtitles loaded:', apiSubtitleData);
             this.updateStatus(`✅ API subtitles loaded (cached)`, 'success');
+            
+            // Track cached API subtitle loading
+            try {
+                this.analytics.trackSubtitleLoad('api', true);
+            } catch (error) {
+                Logger.log('Content: Analytics tracking failed:', error.message);
+            }
             
             // Notify background script subtitles are ready
             chrome.runtime.sendMessage({
@@ -216,6 +236,19 @@ class YouTubeVoiceAssistant {
             return;
         }
 
+        // Initialize analytics with error handling
+        try {
+            await this.analytics.init();
+            // Track extension installation/usage
+            await this.analytics.trackInstall();
+        } catch (error) {
+            if (error.message.includes('Extension context invalidated')) {
+                Logger.log('Content: Extension context invalidated, analytics disabled');
+            } else {
+                Logger.error('Content: Analytics initialization failed:', error);
+            }
+        }
+
         // Get API key
         const apiKey = await this.getApiKey();
         if (!apiKey) {
@@ -241,9 +274,26 @@ class YouTubeVoiceAssistant {
 
     async getApiKey() {
         return new Promise((resolve) => {
-            chrome.storage.sync.get(['openai_api_key'], (result) => {
-                resolve(result.openai_api_key);
-            });
+            try {
+                // 检查扩展上下文是否有效
+                if (!chrome || !chrome.runtime || !chrome.runtime.id) {
+                    Logger.log('Content: Extension context invalid, cannot get API key');
+                    resolve(null);
+                    return;
+                }
+
+                chrome.storage.sync.get(['openai_api_key'], (result) => {
+                    if (chrome.runtime.lastError) {
+                        Logger.log('Content: Runtime error getting API key:', chrome.runtime.lastError.message);
+                        resolve(null);
+                        return;
+                    }
+                    resolve(result.openai_api_key);
+                });
+            } catch (error) {
+                Logger.error('Content: Error getting API key:', error);
+                resolve(null);
+            }
         });
     }
 
@@ -589,11 +639,26 @@ class YouTubeVoiceAssistant {
                 (message, type) => this.updateStatus(message, type)
             );
 
+            // Track successful voice query
+            try {
+                this.analytics.trackVoiceQuery(true);
+            } catch (error) {
+                Logger.log('Content: Analytics tracking failed:', error.message);
+            }
+            
             Logger.log('Conversation complete:', result);
 
         } catch (error) {
             Logger.error('Voice query failed:', error);
             this.updateStatus('Processing failed: ' + error.message, 'error');
+            
+            // Track failed voice query
+            try {
+                this.analytics.trackVoiceQuery(false);
+                this.analytics.trackError('voice_query', error.message);
+            } catch (analyticsError) {
+                Logger.log('Content: Analytics tracking failed:', analyticsError.message);
+            }
             
             // Send error log to background
             chrome.runtime.sendMessage({
@@ -696,7 +761,7 @@ class YouTubeVoiceAssistant {
                 
                 if (manualSubtitleData) {
                     Logger.log('Content: Found manually uploaded subtitles');
-                    this.handleManualSubtitleUploaded(videoId, manualSubtitleData);
+                    this.handleManualSubtitleUploaded(videoId, manualSubtitleData, true); // true indicates from cache
                 } else if (apiSubtitleData) {
                     Logger.log('Content: Found cached API subtitles');
                     this.handleCachedApiSubtitle(videoId, apiSubtitleData);
@@ -763,6 +828,13 @@ class YouTubeVoiceAssistant {
             });
 
             Logger.log(`API subtitles cached to local storage: ${videoId}`);
+
+            // Track API subtitle loading (first time, not cached)
+            try {
+                this.analytics.trackSubtitleLoad('api', false);
+            } catch (error) {
+                Logger.log('Content: Analytics tracking failed:', error.message);
+            }
 
             // Notify background script subtitles are ready
             chrome.runtime.sendMessage({

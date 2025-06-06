@@ -1,7 +1,7 @@
 // YouTube Watching Assistant - Debug Logger
 // 生产环境请将 IS_DEBUG 设为 false
 
-const IS_DEBUG = false; // 🔧 发布时改为 false
+const IS_DEBUG = true; // 🔧 发布时改为 false
 
 class Logger {
     static log(...args) {

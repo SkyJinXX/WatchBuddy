@@ -17,6 +17,9 @@ async function initPopup() {
     // Load voice settings
     await loadVoiceSettings();
     
+    // Load privacy settings
+    await loadPrivacySettings();
+    
     // Check current page
     await checkCurrentPage();
     
@@ -93,6 +96,20 @@ async function loadVoiceSettings() {
 }
 
 /**
+ * Load privacy settings
+ */
+async function loadPrivacySettings() {
+    try {
+        const result = await chrome.storage.sync.get(['analytics_enabled']);
+        const analyticsEnabled = result.analytics_enabled !== false; // Default enabled
+        document.getElementById('analyticsEnabled').checked = analyticsEnabled;
+        Logger.log('Analytics setting loaded:', analyticsEnabled);
+    } catch (error) {
+        Logger.error('Failed to load privacy settings:', error);
+    }
+}
+
+/**
  * Save voice settings
  */
 async function saveVoiceSettings() {
@@ -108,6 +125,36 @@ async function saveVoiceSettings() {
     } catch (error) {
         Logger.error('Failed to save voice settings:', error);
         showStatus('Failed to save voice settings', 'error');
+    }
+}
+
+/**
+ * Save privacy settings
+ */
+async function savePrivacySettings() {
+    try {
+        const analyticsEnabled = document.getElementById('analyticsEnabled').checked;
+        await chrome.storage.sync.set({ analytics_enabled: analyticsEnabled });
+        Logger.log('Analytics setting saved:', analyticsEnabled);
+        
+        showStatus(analyticsEnabled ? 'Usage statistics enabled' : 'Usage statistics disabled', 'success');
+        
+        // Notify content script about analytics setting change
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tab && tab.url && tab.url.includes('youtube.com/watch')) {
+                await chrome.tabs.sendMessage(tab.id, {
+                    action: 'analytics_setting_changed',
+                    enabled: analyticsEnabled
+                });
+            }
+        } catch (error) {
+            Logger.log('Failed to notify content script (normal if not on YouTube page):', error.message);
+        }
+        
+    } catch (error) {
+        Logger.error('Failed to save privacy settings:', error);
+        showStatus('Failed to save privacy settings', 'error');
     }
 }
 
@@ -484,6 +531,9 @@ function bindEventListeners() {
     
     // Enhanced voice mode switch
     document.getElementById('enhancedVoiceMode').addEventListener('change', saveVoiceSettings);
+    
+    // Analytics switch
+    document.getElementById('analyticsEnabled').addEventListener('change', savePrivacySettings);
     
     // File upload
     const fileInput = document.getElementById('subtitleFile');

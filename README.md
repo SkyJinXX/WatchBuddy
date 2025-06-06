@@ -35,7 +35,7 @@
 *Currently under review - will be available soon!*
 
 #### Option 2: Manual Installation *(Available Now)*
-1. **Download**: Get the [latest release](https://github.com/skyjinxx/VideoWatchingAssistant/releases) ZIP file
+1. **Download**: Get the [latest release](https://github.com/skyjinxx/WatchBuddy/releases) ZIP file
 2. **Extract**: Unzip the downloaded file to a folder
 3. **Install**: 
    - Open Chrome and go to `chrome://extensions/`
@@ -157,7 +157,7 @@
 
 ## 🤝 Support & Feedback
 
-- 🐛 **Report Issues**: [GitHub Issues](https://github.com/skyjinxx/VideoWatchingAssistant/issues)
+- 🐛 **Report Issues**: [GitHub Issues](https://github.com/skyjinxx/WatchBuddy/issues)
 - 💡 **Feature Requests**: Create an issue with the "enhancement" label
 
 ---
@@ -170,4 +170,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **🎉 Ready to transform your YouTube learning experience?** 
 
-[Download WatchBuddy](https://github.com/skyjinxx/VideoWatchingAssistant/releases) and start your AI-powered learning journey today! 
+[Download WatchBuddy](https://github.com/skyjinxx/WatchBuddy/releases) and start your AI-powered learning journey today! 

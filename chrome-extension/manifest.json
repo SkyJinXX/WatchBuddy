@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "WatchBuddy - YouTube Watching Assistant",
-  "version": "0.5.0",
+  "name": "WatchBuddy - YouTube Watching AI Assistant",
+  "version": "0.5.1",
   "description": "AI voice assistant to help understand YouTube video content. Supports voice questions and intelligent answers.",
   "permissions": [
     "activeTab",
@@ -14,13 +14,15 @@
     "https://downsub.com/*",
     "https://get-info.downsub.com/*",
     "https://member.downsub.com/*",
-    "https://download.subtitle.to/*"
+    "https://download.subtitle.to/*",
+    "https://www.google-analytics.com/*"
   ],
   "content_scripts": [
     {
       "matches": ["*://www.youtube.com/*"],
       "js": [
         "src/utils/logger.js",
+        "src/utils/analytics.js",
         "src/utils/ort.js",
         "src/utils/vad-web.js",
         "src/utils/crypto-js.min.js",

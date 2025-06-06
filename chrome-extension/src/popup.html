@@ -379,6 +379,7 @@
 
         .setting-info {
             flex: 1;
+            padding-right: 10px;
         }
 
         .setting-title {
@@ -444,6 +445,8 @@
                 </div>
             </div>
 
+
+
             <!-- Subtitle Management -->
             <div class="section" id="subtitleSection" style="display: none;">
                 <h3>📝 Subtitle Management</h3>
@@ -471,6 +474,24 @@
                     <button class="btn btn-danger" id="clearSubtitleBtn">Clear Current Subtitles</button>
                 </div>
             </div>
+            <!-- Privacy Settings -->
+            <div class="section">
+                <h3>🔒 Privacy Settings</h3>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <div class="setting-title">Anonymous Usage Statistics</div>
+                        <div class="setting-description">
+                            Share anonymous usage stats to help me understand how many people use WatchBuddy and where to focus improvements. <br>
+                            This gives me encouragement and direction for development! 
+                            <a href="https://skyjinxx.github.io/WatchBuddyPrivacyPolicy" target="_blank">Privacy Policy</a>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="analyticsEnabled" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
             <!-- Current Page Status -->
             <div class="section">
                 <div id="currentPageStatus" class="current-page" style="display: none;">
@@ -484,6 +505,7 @@
     </div>
 
     <script src="utils/logger.js"></script>
+    <script src="utils/analytics.js"></script>
     <script src="popup.js"></script>
 </body>
 </html> 

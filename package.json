@@ -1,6 +1,6 @@
 {
   "name": "youtube-watching-assistant",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "YouTube Watching Assistant Chrome Extension",
   "scripts": {
     "dev": "node restore-dev.js",
