@@ -558,7 +558,7 @@ class YouTubeVoiceAssistant {
         // Check for subtitles
         const hasSubtitles = this.manualSubtitle || (this.subtitles && this.fullTranscript);
         if (!hasSubtitles) {
-            message = 'Subtitle data required';
+            message = 'No subtitle data, please refresh the page or upload manually in settings';
             type = 'error';
         } else if (this.isProcessing) {
             message = 'Processing...';
@@ -629,7 +629,7 @@ class YouTubeVoiceAssistant {
 
             // Check for available subtitles
             if (!context.fullTranscript) {
-                this.updateStatus('No subtitle data, please upload manually', 'error');
+                this.updateStatus('No subtitle data, please refresh the page or upload manually in settings', 'error');
                 return;
             }
 
