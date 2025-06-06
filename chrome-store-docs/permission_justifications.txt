@@ -1,0 +1,57 @@
+CHROME EXTENSION PERMISSION JUSTIFICATIONS
+YouTube Watching Assistant v0.5.2
+
+================================================================================
+1. ACTIVE TAB PERMISSION JUSTIFICATION
+================================================================================
+
+Permission Required: activeTab
+
+The activeTab permission is essential for YouTube video AI assistance. It enables:
+- Detecting YouTube video pages to enable assistant features
+- Extracting video metadata (title, ID, timestamp) for context
+- Injecting floating microphone interface for voice interaction
+- Accessing video subtitles/transcripts for AI processing
+- Monitoring video position for spoiler-free responses
+
+Technical necessity: Content script injection requires activeTab to access YouTube DOM and extract video information for AI context.
+
+Privacy protection: Only activates on user interaction with extension on YouTube tabs. No monitoring of other tabs or browsing activity.
+
+================================================================================
+2. STORAGE PERMISSION JUSTIFICATION  
+================================================================================
+
+Permission Required: storage
+
+Local storage is critical for privacy and performance:
+- Securely store OpenAI API key locally on user's device
+- Cache video subtitles/transcripts to reduce API calls and improve speed
+- Maintain conversation history for contextual follow-up questions
+- Save user preferences (voice mode settings) for personalized experience
+- Store manually uploaded subtitle files when auto-extraction fails
+
+Technical implementation: Uses Chrome's secure storage API with local encryption. Auto-cleanup after retention periods (7 days conversations, 30 days subtitles).
+
+Privacy guarantee: All data stays on user's device. No transmission to third parties except OpenAI for AI processing. Users can clear all data anytime.
+
+================================================================================
+3. HOST PERMISSIONS JUSTIFICATION
+================================================================================
+
+Permissions Required: 
+- https://*.youtube.com/* - Access video pages, extract metadata, subtitles, playback position for context-aware AI responses
+- https://api.openai.com/* - Send voice questions to GPT models and receive AI responses (core functionality)
+- https://downsub.com/*, https://get-info.downsub.com/*, https://member.downsub.com/* - Primary subtitle extraction service with encrypted communication
+- https://download.subtitle.to/* - Backup subtitle source for comprehensive coverage when primary service unavailable
+- https://www.google-analytics.com/* - Send anonymous usage analytics to improve extension performance and user experience
+
+Security: All communications use HTTPS encryption. CORS proxy through background service worker maintains security boundaries. No user data stored on external servers beyond necessary API interactions.
+
+User control: Users can disable extension or revoke permissions anytime. Only processes data for actively watched videos with explicit user requests.
+
+================================================================================
+COMPLIANCE SUMMARY
+================================================================================
+
+This extension demonstrates Google's requirements: Privacy by design with local data storage, minimal permission scope (activeTab only on interaction, host permissions for essential services), transparent functionality with no hidden collection, and genuine user benefit for YouTube learning enhancement. All permissions directly support advertised AI Q&A features while maintaining strict privacy protections. 

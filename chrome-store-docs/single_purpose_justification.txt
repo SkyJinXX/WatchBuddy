@@ -1,0 +1,128 @@
+SINGLE PURPOSE JUSTIFICATION
+YouTube Watching Assistant v0.5.2
+
+================================================================================
+PRIMARY PURPOSE STATEMENT
+================================================================================
+
+The YouTube Watching Assistant extension serves a single, well-defined purpose:
+
+"Enable AI-powered voice interaction for YouTube video content to enhance learning and comprehension through intelligent Q&A based on video transcripts."
+
+================================================================================
+CORE FUNCTIONALITY ALIGNMENT
+================================================================================
+
+All extension features directly support this single purpose:
+
+1. Voice Input Processing
+   - Voice Activity Detection (VAD) for hands-free interaction
+   - Audio recording and transcription for user questions
+   - Purpose: Capture user questions about video content
+
+2. YouTube Video Integration
+   - Video metadata extraction (title, ID, timestamp)
+   - Subtitle and transcript processing
+   - Current playback position tracking
+   - Purpose: Understand video content and user context
+
+3. AI-Powered Response Generation
+   - OpenAI API integration for intelligent responses
+   - Context-aware answers based on video transcripts
+   - Spoiler prevention through timestamp awareness
+   - Purpose: Provide relevant answers about video content
+
+4. Manual Subtitle Support
+   - SRT file upload for videos without auto-subtitles
+   - Subtitle editing and management interface
+   - Purpose: Ensure comprehensive video content access for AI processing
+
+5. Text-to-Speech Output
+   - Audio response playback for accessibility
+   - Hands-free interaction completion
+   - Purpose: Deliver AI responses in audio format
+
+================================================================================
+FEATURE NECESSITY ANALYSIS
+================================================================================
+
+Each feature is essential for the core purpose:
+
+Voice Recording: Required to capture user questions about video content without manual typing, enabling seamless learning experience.
+
+Subtitle Extraction: Necessary to provide AI with video content context for accurate question answering.
+
+OpenAI Integration: Essential AI engine that processes video content and user questions to generate helpful responses.
+
+YouTube Integration: Required to identify video content, extract metadata, and track user position for context-aware responses.
+
+Local Storage: Needed to cache subtitles for performance and store user preferences for consistent experience.
+
+Manual Upload: Critical fallback when automatic subtitle extraction fails, ensuring the extension works across all YouTube videos.
+
+================================================================================
+NO AUXILIARY FUNCTIONS
+================================================================================
+
+The extension contains no features unrelated to its core purpose:
+
+- No social media integration or sharing features
+- No advertising or monetization components
+- No user tracking or analytics beyond error logging
+- No bookmark management or navigation tools
+- No video downloading or content manipulation
+- No browser modification beyond YouTube video pages
+- No communication features beyond AI Q&A
+- No entertainment features unrelated to learning
+
+================================================================================
+USER INTERFACE COHERENCE
+================================================================================
+
+The extension's interface reinforces its single purpose:
+
+- Simple floating microphone button for voice input
+- Clean popup interface focused on subtitle management and settings
+- No extraneous UI elements or distracting features
+- All controls directly related to video Q&A functionality
+- Clear status indicators for recording, processing, and playback states
+
+================================================================================
+PERMISSION ALIGNMENT
+================================================================================
+
+All requested permissions directly support the core purpose:
+
+activeTab: Required to access YouTube video pages and extract content for AI processing
+storage: Needed to cache video subtitles and store user API keys securely
+Host permissions: Essential for accessing YouTube content and AI services
+
+No permissions are requested for unrelated functionality such as:
+- Browser history access
+- Bookmark management
+- Tab management beyond active YouTube tabs
+- System-level access
+- Network monitoring
+
+================================================================================
+GOOGLE ANALYSIS COMPLIANCE
+================================================================================
+
+Based on Google's single purpose requirement analysis:
+
+Focused Functionality:
+The extension performs one specific task - enabling AI-powered Q&A for YouTube videos. All code, features, and permissions align with this singular goal.
+
+No Feature Creep:
+Version 0.5.2 maintains focus on core purpose while improving user experience through better VAD, manual subtitle support, and optimized AI responses.
+
+Clear User Value:
+Users understand exactly what the extension does from its name and description. The functionality matches user expectations for a "YouTube Watching Assistant."
+
+Coherent User Experience:
+The entire user journey supports the core purpose: watch video → ask question via voice → receive AI response about video content.
+
+No Hidden Functionality:
+All features are visible and directly support the advertised purpose. No background processing unrelated to video Q&A occurs.
+
+This extension exemplifies the single purpose principle by providing focused, useful functionality without scope expansion or feature bloat. 

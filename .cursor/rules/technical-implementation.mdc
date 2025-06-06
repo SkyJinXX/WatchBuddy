@@ -5,7 +5,7 @@ alwaysApply: true
 ---
 # Technical Implementation Details
 
-## Manual Subtitle Upload System (v2.0.0)
+## Manual Subtitle Upload System (v0.5.2)
 
 ### Implementation in [popup.js](mdc:chrome-extension/src/popup.js) and [content.js](mdc:chrome-extension/src/content.js)
 Provides manual subtitle upload as fallback when API fails:

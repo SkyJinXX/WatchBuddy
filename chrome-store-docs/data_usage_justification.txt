@@ -1,0 +1,195 @@
+DATA USAGE JUSTIFICATION
+YouTube Watching Assistant v0.5.2
+
+================================================================================
+DATA COLLECTION OVERVIEW
+================================================================================
+
+The YouTube Watching Assistant extension collects and processes minimal data necessary for its core functionality. All data handling prioritizes user privacy and follows data minimization principles.
+
+Data Types Collected:
+1. Video metadata (title, ID, current timestamp)
+2. Video subtitles and transcripts
+3. User voice input for questions
+4. User's OpenAI API key
+5. User preferences and settings
+6. Conversation history for context
+
+================================================================================
+DETAILED DATA USAGE ANALYSIS
+================================================================================
+
+1. VIDEO METADATA
+   Collection: Video title, unique video ID, current playback timestamp
+   Purpose: Provide context for AI responses and ensure answers are relevant to the specific video content
+   Storage: Temporarily cached locally for current session only
+   Transmission: Sent to OpenAI API as context for generating relevant responses
+   Retention: Cleared when user navigates away from video
+   User Control: Automatic collection only when extension is actively used
+
+2. VIDEO SUBTITLES AND TRANSCRIPTS
+   Collection: Subtitle text and timestamps from YouTube or subtitle services
+   Purpose: Enable AI to understand video content and provide accurate answers to user questions
+   Storage: Cached locally for 30 days to improve performance and reduce API calls
+   Transmission: Sent to OpenAI API to provide video context for user questions
+   Retention: 30-day automatic cleanup with user option to clear immediately
+   User Control: Users can manually upload subtitles or disable automatic extraction
+
+3. USER VOICE INPUT
+   Collection: Audio recordings of user questions about video content
+   Purpose: Convert speech to text for AI processing and question answering
+   Storage: Temporarily processed in memory only, not permanently stored
+   Transmission: Sent to OpenAI API for transcription and question processing
+   Retention: Immediately discarded after processing, no persistent storage
+   User Control: Explicit user action required for each recording
+
+4. OPENAI API KEY
+   Collection: User-provided API key for accessing OpenAI services
+   Purpose: Authenticate user requests to OpenAI for AI-powered responses
+   Storage: Encrypted storage in Chrome's secure storage API on user's device only
+   Transmission: Sent securely to OpenAI API for authentication with each request
+   Retention: Stored until user manually removes or uninstalls extension
+   User Control: User provides key voluntarily, can remove or change at any time
+
+5. USER PREFERENCES
+   Collection: Settings such as enhanced voice mode preferences, UI language
+   Purpose: Customize user experience and remember user's preferred interaction methods
+   Storage: Stored locally in Chrome storage on user's device
+   Transmission: Never transmitted to external servers
+   Retention: Maintained until user changes settings or uninstalls extension
+   User Control: User explicitly sets preferences, can modify at any time
+
+6. CONVERSATION HISTORY
+   Collection: Previous questions and AI responses for context in multi-turn conversations
+   Purpose: Enable contextual follow-up questions and maintain conversation coherence
+   Storage: Stored locally on user's device for 7 days maximum
+   Transmission: Recent conversation context sent to OpenAI for maintaining conversation flow
+   Retention: Automatic 7-day cleanup with user option to clear immediately
+   User Control: Users can clear conversation history at any time
+
+================================================================================
+DATA MINIMIZATION PRACTICES
+================================================================================
+
+Minimal Collection:
+- Only collects data essential for AI-powered video Q&A functionality
+- No personal information beyond user-provided API key
+- No tracking of user behavior outside of active extension usage
+- No collection of browsing history or other browser data
+
+Purpose Limitation:
+- All data used exclusively for video Q&A functionality
+- No data repurposing for analytics, advertising, or other secondary uses
+- No data sharing with third parties beyond OpenAI for AI processing
+
+Storage Minimization:
+- Local storage preferred over cloud storage for user privacy
+- Automatic cleanup policies prevent unnecessary data accumulation
+- User controls for immediate data deletion
+
+Processing Minimization:
+- Voice input processed in memory without persistent storage
+- Subtitle caching reduces redundant API calls and processing
+- Efficient data structures minimize memory usage
+
+================================================================================
+THIRD-PARTY DATA SHARING
+================================================================================
+
+OpenAI API (Required for Core Functionality):
+Data Shared: Video context (title, relevant subtitles), user questions, conversation history
+Purpose: Generate AI-powered responses about video content
+Legal Basis: Necessary for contracted service performance
+User Control: Users provide explicit consent by configuring API key
+Data Protection: Transmitted via HTTPS encryption, processed according to OpenAI's privacy policy
+
+Subtitle Services (downsub.com, download.subtitle.to):
+Data Shared: Video URL/ID for subtitle extraction
+Purpose: Obtain video subtitles when not available through YouTube
+Legal Basis: Necessary for core functionality
+User Control: Automatic with user option to disable and use manual upload
+Data Protection: Encrypted communication, no personal data transmitted
+
+No Other Third-Party Sharing:
+- No data shared with analytics services
+- No advertising or marketing data sharing
+- No data broker relationships
+- No social media integration data sharing
+
+================================================================================
+USER RIGHTS AND CONTROLS
+================================================================================
+
+Data Access:
+- Users can view all stored data through extension interface
+- Conversation history displayed in popup
+- Subtitle cache visible in storage management
+
+Data Portability:
+- Users can export conversation history (manual copy)
+- Manual subtitle uploads can be saved as files
+- API keys can be backed up by users
+
+Data Deletion:
+- Immediate deletion of all data through extension interface
+- Automatic cleanup policies for aged data
+- Complete data removal upon extension uninstall
+
+Data Correction:
+- Users can edit manual subtitle uploads
+- API key can be updated at any time
+- Preferences can be modified through settings
+
+Consent Withdrawal:
+- Users can disable extension at any time
+- API key removal immediately stops OpenAI integration
+- Extension uninstall removes all local data
+
+================================================================================
+SECURITY MEASURES
+================================================================================
+
+Encryption:
+- API keys encrypted in Chrome's secure storage
+- All external communications use HTTPS
+- Local data protected by browser security model
+
+Access Controls:
+- Extension only accesses data when user is actively using YouTube
+- No background data collection when extension is inactive
+- Minimal permission scope limits data access
+
+Data Integrity:
+- Subtitle validation prevents malformed data storage
+- Error handling prevents data corruption
+- Regular cleanup maintains storage health
+
+================================================================================
+COMPLIANCE WITH GOOGLE ANALYSIS
+================================================================================
+
+Privacy by Design:
+- Default settings prioritize user privacy
+- Minimal data collection from design stage
+- Local storage preferred over cloud storage
+- User control emphasized throughout interface
+
+Transparency:
+- Clear explanation of all data usage in extension interface
+- No hidden data collection or processing
+- Open source code available for inspection
+- Detailed privacy policy provided
+
+User Empowerment:
+- Granular controls for all data types
+- Easy deletion and modification options
+- Clear opt-in process for all data sharing
+- No forced data collection for basic functionality
+
+Lawful Basis:
+- User consent for all non-essential data processing
+- Legitimate interest for core functionality only
+- No processing beyond stated purposes
+- Respect for user rights and preferences
+
+This data usage framework ensures the extension provides valuable functionality while maintaining the highest standards of user privacy and data protection. 

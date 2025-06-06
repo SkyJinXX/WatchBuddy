@@ -77,7 +77,7 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 - Fallback to traditional 5-second recording
 - Smart audio preprocessing and format conversion
 
-#### 3. OpenAI Integration (v2.0.0)
+#### 3. OpenAI Integration (v0.5.2)
 - **Optimized Message Structure**: Static + dynamic context separation
 - **Prefix Caching**: 30-50% cost reduction through cacheable static content
 - **Temperature**: Set to 1.0 for more creative responses
@@ -107,7 +107,7 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 - Local storage for conversation history and manual subtitles
 - Automatic cleanup of expired data (7-day conversations, 30-day subtitles)
 
-## User Workflow (v2.0.0)
+## User Workflow (v0.5.2)
 
 ### Standard Operation
 1. User visits YouTube video
