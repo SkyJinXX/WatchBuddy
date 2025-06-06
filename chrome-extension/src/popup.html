@@ -221,18 +221,30 @@
 
         .toggle-password {
             position: absolute;
-            right: 10px;
+            right: 8px;
             top: 50%;
             transform: translateY(-50%);
             background: none;
             border: none;
             cursor: pointer;
             color: #666;
-            font-size: 12px;
+            font-size: 11px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            z-index: 10;
+        }
+
+        .toggle-password:hover {
+            background: #f0f0f0;
         }
 
         .input-wrapper {
             position: relative;
+        }
+
+        .input-wrapper input[type="password"], 
+        .input-wrapper input[type="text"] {
+            padding-right: 60px; /* 为 Show/Hide 按钮留出空间 */
         }
 
         .current-page {
@@ -387,17 +399,10 @@
     <div class="container">
         <div class="header">
             <h1>🎤 WatchBuddy</h1>
-            <p>AI-powered voice Q&A for enhanced learning</p>
+            <p>AI-powered voice Q&A for video watching</p>
         </div>
 
         <div class="content">
-            <!-- Current Page Status -->
-            <div class="section">
-                <div id="currentPageStatus" class="current-page" style="display: none;">
-                    <div class="current-page-title">Current Page</div>
-                    <div class="current-page-url" id="currentPageUrl">Detecting...</div>
-                </div>
-            </div>
 
             <!-- API Configuration -->
             <div class="section">
@@ -409,11 +414,16 @@
                         <button type="button" class="toggle-password" id="togglePasswordBtn">Show</button>
                     </div>
                     <div class="help-text">
-                        A valid OpenAI API key is required for voice features.<br>
-                        Get your key: <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>
+                        🔑 A valid <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI API key</a> is required for voice features.<br>
+                        🔒 Your API key is stored locally in your browser and never shared.
                     </div>
                 </div>
-                <button class="btn" id="saveApiKeyBtn">Save Configuration</button>
+                
+                <!-- API Buttons Row -->
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button class="btn btn-secondary" id="testBtn" style="flex: 1;">Test API</button>
+                    <button class="btn" id="saveApiKeyBtn" style="flex: 1;">Save API Key</button>
+                </div>
             </div>
 
             <!-- Voice Settings -->
@@ -433,8 +443,6 @@
                     </label>
                 </div>
             </div>
-
-            <div class="divider"></div>
 
             <!-- Subtitle Management -->
             <div class="section" id="subtitleSection" style="display: none;">
@@ -463,18 +471,13 @@
                     <button class="btn btn-danger" id="clearSubtitleBtn">Clear Current Subtitles</button>
                 </div>
             </div>
-
-            <div class="divider"></div>
-
-            <!-- Quick Actions -->
+            <!-- Current Page Status -->
             <div class="section">
-                <h3>🚀 Quick Actions</h3>
-                <button class="btn" id="testBtn">Test API Connection</button>
-                <div style="margin-top: 10px;">
-                    <button class="btn btn-secondary" id="helpBtn">User Guide</button>
+                <div id="currentPageStatus" class="current-page" style="display: none;">
+                    <div class="current-page-title">Current Page</div>
+                    <div class="current-page-url" id="currentPageUrl">Detecting...</div>
                 </div>
             </div>
-
             <!-- Status Display -->
             <div id="statusMessage" style="display: none;"></div>
         </div>

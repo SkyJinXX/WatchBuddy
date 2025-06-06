@@ -16,7 +16,10 @@ class YouTubeVoiceAssistant {
         this.manualSubtitle = null; // Manually uploaded subtitle data
         this.statusHideTimer = null; // Status auto-hide timer
         this.savePositionTimer = null; // Position save debounce timer
-        this.hasTemporaryStatus = false; // Whether there is a temporary status (status that auto-hides)
+        
+        // 状态显示相关
+        this.isInConversation = false; // 是否在对话中
+        this.isHovering = false; // 鼠标是否悬停
         
         // Configuration options
         this.contextSentencesBefore = 4; // Number of sentences before current time (configurable)
@@ -280,8 +283,14 @@ class YouTubeVoiceAssistant {
         this.setupDragAndClick();
         
         // Hover events
-        this.floatingButton.addEventListener('mouseenter', () => this.showStatus());
-        this.floatingButton.addEventListener('mouseleave', () => this.hideStatus());
+        this.floatingButton.addEventListener('mouseenter', () => {
+            this.isHovering = true;
+            this.showStatus();
+        });
+        this.floatingButton.addEventListener('mouseleave', () => {
+            this.isHovering = false;
+            this.hideStatus();
+        });
         
         // Load saved position
         this.loadPosition();
@@ -466,8 +475,8 @@ class YouTubeVoiceAssistant {
 
     showStatus() {
         if (this.statusDisplay) {
-            // If no temporary status, show default hover status
-            if (!this.hasTemporaryStatus) {
+            // 如果不在对话中，显示悬停状态；如果在对话中，保持当前状态
+            if (!this.isInConversation) {
                 this.showHoverStatus();
             }
             this.statusDisplay.classList.add('visible');
@@ -476,6 +485,10 @@ class YouTubeVoiceAssistant {
 
     hideStatus() {
         if (this.statusDisplay) {
+            // 如果在对话中，不隐藏状态（即使鼠标移开）
+            if (this.isInConversation) {
+                return;
+            }
             this.statusDisplay.classList.remove('visible');
         }
     }
@@ -489,7 +502,7 @@ class YouTubeVoiceAssistant {
         const statusText = this.statusDisplay.querySelector('.yva-status-text');
         
         // Show different hints based on current status
-        let message = 'Click to start voice conversation';
+        let message = 'Click to ask';
         let type = 'info';
 
         // Check for subtitles
@@ -504,7 +517,6 @@ class YouTubeVoiceAssistant {
 
         statusText.textContent = message;
         this.statusDisplay.className = `yva-status-display ${type}`;
-        this.hasTemporaryStatus = false; // Marked as non-temporary status
     }
 
     updateStatus(message, type = 'info') {
@@ -517,8 +529,12 @@ class YouTubeVoiceAssistant {
         statusText.textContent = message;
         this.statusDisplay.className = `yva-status-display ${type} visible`;
 
-        // Marked as temporary status (status that auto-hides)
-        this.hasTemporaryStatus = (type === 'processing' || type === 'recording' || type === 'success' || type === 'error');
+        // 定义对话中的状态类型
+        const conversationStates = ['recording', 'processing', 'playing'];
+        const isConversationState = conversationStates.includes(type);
+        
+        // 更新对话状态
+        this.isInConversation = isConversationState;
 
         // Update button status
         if (type === 'processing' || type === 'recording') {
@@ -536,13 +552,13 @@ class YouTubeVoiceAssistant {
             clearTimeout(this.statusHideTimer);
         }
 
-        // Auto-hide temporary status
-        if (this.hasTemporaryStatus) {
+        // 如果在对话中，持续显示；如果不在对话中，短暂显示后消失
+        if (!isConversationState) {
             this.statusHideTimer = setTimeout(() => {
-                this.hasTemporaryStatus = false; // Clear temporary status flag
                 this.hideStatus();
             }, type === 'success' ? 2000 : (type === 'error' ? 4000 : 3000));
         }
+        // 对话中的状态（recording, processing, playing）不设置自动隐藏定时器，会持续显示
     }
 
     async handleVoiceQuery() {
@@ -587,9 +603,9 @@ class YouTubeVoiceAssistant {
             });
         } finally {
             this.isProcessing = false;
-            // Clear temporary status after a delay so the user can see the result
+            // 对话完成后，重置对话状态并清理状态显示
             setTimeout(() => {
-                this.hasTemporaryStatus = false;
+                this.isInConversation = false;
                 this.hideStatus();
             }, 3000);
         }

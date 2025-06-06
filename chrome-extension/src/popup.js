@@ -429,7 +429,7 @@ async function testConnection() {
         showStatus(`❌ Network error: ${error.message}`, 'error');
     } finally {
         testBtn.disabled = false;
-        testBtn.textContent = 'Test API Connection';
+        testBtn.textContent = 'Test API';
     }
 }
 
@@ -464,53 +464,7 @@ function togglePassword() {
     }
 }
 
-/**
- * Open instructions
- */
-function openHelp() {
-    const helpContent = `
-🎤 Instructions
 
-✨ Features:
-• When watching a YouTube video, click the floating button on the right to ask questions by voice
-• AI will answer your questions intelligently based on the video content and subtitles
-• Supports multi-language Q&A, automatically recognizes voice language
-
-🚀 Steps to Use:
-1. Configure OpenAI API Key (Required)
-2. Open any YouTube video page
-3. If automatic subtitle retrieval fails, you can manually upload an SRT subtitle file
-4. Click the floating 🎤 button on the right
-5. Speak your question (intelligent voice detection)
-6. AI will automatically answer and play audio
-
-📝 Subtitle Features:
-• The extension will automatically attempt to fetch video subtitles
-• If it fails, you can download an SRT file from downsub.com and upload it manually
-• Supports direct editing of subtitle text
-• Subtitles for each video are saved separately
-
-💡 Usage Tips:
-• Keep questions concise and clear, such as: "What was just said?"
-• You can ask about specific video content, such as: "What does this concept mean?"
-• Supports contextual conversation, you can ask follow-up questions
-
-⚙️ Notes:
-• Requires granting microphone permission to the browser
-• Ensure a stable network connection
-• API calls incur costs, please use reasonably
-
-❓ FAQ:
-• If the button does not appear, please refresh the page
-• If the API reports an error, please check the key configuration
-• If there is no sound, please check the volume settings
-
-💰 Cost estimation:
-• 30 questions per day, $7 per month
-    `;
-    
-    alert(helpContent);
-}
 
 /**
  * Bind event listeners
@@ -524,9 +478,6 @@ function bindEventListeners() {
     
     // Test connection button
     document.getElementById('testBtn').addEventListener('click', testConnection);
-    
-    // Help button
-    document.getElementById('helpBtn').addEventListener('click', openHelp);
     
     // Subtitle related buttons
     document.getElementById('clearSubtitleBtn').addEventListener('click', clearSubtitle);
