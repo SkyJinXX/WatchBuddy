@@ -5,8 +5,11 @@
   "scripts": {
     "dev": "node restore-dev.js",
     "release": "node prepare-release.js",
-    "help": "echo '开发: npm run dev | 发布: npm run release'"
+    "package": "node create-release.js",
+    "help": "echo '开发: npm run dev | 发布: npm run release | 打包: npm run package'"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "archiver": "^6.0.1"
+  },
   "private": true
 } 

@@ -5,8 +5,7 @@
   "description": "AI voice assistant to help understand YouTube video content. Supports voice questions and intelligent answers.",
   "permissions": [
     "activeTab",
-    "storage",
-    "background"
+    "storage"
   ],
   "host_permissions": [
     "https://www.youtube.com/*",

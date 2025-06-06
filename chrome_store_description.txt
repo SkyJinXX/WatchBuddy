@@ -1,0 +1,25 @@
+Transform passive watching into active learning! WatchBuddy adds an intelligent AI companion that understands exactly what you're watching and can answer your questions in real-time.
+
+✨ Key Features:
+- Context-Aware Intelligence: Knows your current video position and can reference what was just said
+- Natural Voice Interaction: Simply click the microphone and ask your questions
+- Instant AI Responses: Get detailed explanations powered by OpenAI
+- Timeline-Aware: Ask "What did they just say?" and get precise answers
+
+📚 Perfect For:
+- Language Learning: Get instant clarification on phrases, pronunciation, or concepts
+- Online Education: Understand complex topics in lectures and tutorials immediately
+- Professional Development: Deepen comprehension of training videos and webinars
+- Entertainment: Engage more meaningfully with documentaries and educational content
+
+🚀 Quick Setup:
+1. Install WatchBuddy extension
+2. Pin to your Chrome toolbar for easy access
+3. Add your OpenAI API key in settings (stored securely on your device)
+4. Refresh any YouTube page
+5. Click the floating microphone icon and start asking!
+
+⚠️ Requirements:
+- OpenAI API key required (approximately $0.007 per question)
+- Works best with videos that have complete subtitles/captions
+

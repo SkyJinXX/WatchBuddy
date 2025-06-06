@@ -1,321 +1,173 @@
-# 🎤 WatchBuddy - YouTube Watching Assistant Chrome Extension
+# 🤖 WatchBuddy - YouTube Watching Assistant
 
-An intelligent Chrome browser extension that provides AI-powered voice assistance for YouTube learners. Users can pause while watching YouTube videos and ask questions through voice input. The AI responds intelligently based on video content and context, helping users better understand the learning material.
+**Transform passive watching into active learning!** WatchBuddy is a Chrome extension that adds an intelligent AI companion to your YouTube viewing experience. Ask questions about video content using your voice and get instant, context-aware answers.
 
-![WatchBuddy](https://img.shields.io/badge/version-0.5.0-blue.svg)
-![Chrome Extension](https://img.shields.io/badge/platform-Chrome%20Extension-green.svg)
-![OpenAI](https://img.shields.io/badge/powered%20by-OpenAI-orange.svg)
-![GPT-4o](https://img.shields.io/badge/model-GPT--4o--mini--audio--preview-red.svg)
+![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)
+![Platform](https://img.shields.io/badge/platform-Chrome%20Extension-green.svg)
+![AI](https://img.shields.io/badge/powered%20by-OpenAI-orange.svg)
 
-## ✨ Core Features
+---
 
-### 🎯 Smart Voice Q&A
-- **Separated Audio Pipeline**: Voice transcription → AI conversation → Audio response
-- **Context Understanding**: Based on full video transcripts and current timestamp
-- **Multi-language Support**: Automatic voice language detection with multilingual responses
-- **OpenAI Prefix Caching**: Optimized for multi-turn conversations with cost reduction
+## ✨ What Makes WatchBuddy Special?
 
-### 🔊 Advanced Audio Processing
-- **Smart Recording**: VAD (Voice Activity Detection) for automatic speech end detection
-- **High-Quality Transcription**: Using `gpt-4o-mini-transcribe` model
-- **Natural Speech Synthesis**: AI-generated audio responses with `gpt-4o-mini-audio-preview`
-- **Audio ID Caching**: Assistant audio responses are cached and reused efficiently
+### 🎯 **Context-Aware Intelligence**
+- Knows exactly where you are in the video
+- Understands what was just said based on subtitles
+- Provides relevant answers without spoiling future content
 
-### 📚 Intelligent Subtitle Extraction
-- **Automatic Retrieval**: Supports YouTube native subtitles and auto-translated captions
-- **Precise Timestamp Matching**: Provides relevant content based on current playback time
-- **Manual Upload Support**: Backup SRT file upload when auto-extraction fails
-- **Multi-language Subtitles**: Prioritizes English with support for all available languages
+### 🎤 **Natural Voice Interaction**
+- Click the microphone and ask your question naturally
+- Advanced voice detection automatically starts and stops recording
+- Get responses in both text and natural-sounding audio
 
-### 🔄 Optimization Features
-- **Conversation History**: Per-video conversation management with up to 20 messages
-- **Audio ID References**: Reuse assistant audio responses to reduce bandwidth
-- **Dynamic Context**: Current timestamp and relevant subtitles updated per query
-- **Cost Optimization**: Significantly reduced token consumption through caching
+### 🧠 **Smart Learning Assistant**
+- Ask "What did they just say?" or "Explain that concept"
+- Perfect for language learning, online courses, and educational content
+- Maintains conversation context for follow-up questions
 
-## 🚀 Quick Start
+---
 
-### 1. Installation
+## 🚀 Quick Start Guide
 
-#### Developer Mode Installation (Recommended)
-1. Download or clone this project locally
-2. Open Chrome browser and navigate to `chrome://extensions/`
-3. Enable "Developer mode" in the top right corner
-4. Click "Load unpacked"
-5. Select the project root directory
-6. Extension installed successfully!
+### 📥 Installation
 
-#### Chrome Web Store Installation (Coming Soon)
-```
-Will be available on Chrome Web Store soon...
-```
+#### Option 1: Chrome Web Store *(Coming Soon)*
+*Currently under review - will be available soon!*
 
-### 2. API Configuration
+#### Option 2: Manual Installation *(Available Now)*
+1. **Download**: Get the [latest release](https://github.com/skyjinxx/VideoWatchingAssistant/releases) ZIP file
+2. **Extract**: Unzip the downloaded file to a folder
+3. **Install**: 
+   - Open Chrome and go to `chrome://extensions/`
+   - Enable "Developer mode" (toggle in top-right)
+   - Click "Load unpacked" and select the extracted folder
+4. **Pin**: Pin the WatchBuddy extension to your toolbar
 
-1. Click the extension icon to open the configuration panel
-2. Enter your OpenAI API key (format: `sk-...`)
-3. Click "Save Configuration"
-4. Click "Test API Connection" to verify the setup
+### ⚙️ Setup
 
-> 🔑 **Get API Key**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to create an API key
+1. **Get API Key**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to create your API key
+2. **Configure**: Click the WatchBuddy icon and enter your API key
+3. **Test**: Click "Test API Connection" to verify everything works
+4. **Start**: Go to any YouTube video and look for the floating microphone icon!
 
-### 3. Start Using
+---
 
-1. Open any YouTube video page
-2. You'll see a purple 🎤 floating button on the right side
-3. Click the button to start recording (smart VAD or 5-second fixed)
-4. Ask your question, for example:
-   - "Can you repeat what he just said?"
-   - "What does this concept mean?"
-   - "Can you explain this part again?"
-5. AI will automatically respond with both text and audio
+## 🎬 How to Use
 
-## 🛠️ Technical Architecture
+### Basic Usage
+1. **Open** any YouTube video with subtitles
+2. **Click** the floating purple microphone button
+3. **Ask** your question (e.g., "What does that term mean?")
+4. **Listen** to the AI's response and continue the conversation
 
-### Core Technology Stack
-```
-Frontend: Vanilla JavaScript + HTML5 + CSS3
-Audio: Web Audio API + MediaRecorder API + VAD
-AI Services: OpenAI API (gpt-4o-mini-transcribe + gpt-4o-mini-audio-preview)
-Chrome Extension: Manifest V3
-Subtitle: Third-party API + Custom Parser + Manual Upload
-Caching: OpenAI Prefix Caching + Audio ID References
-```
+### Example Questions
+- 🔄 **"What did they just say?"** - Get the last few sentences repeated
+- 🤔 **"Explain that concept"** - Deeper explanation of topics mentioned
+- 🌍 **"What does [word] mean?"** - Language learning assistance
+- 📚 **"Summarize this section"** - Quick summaries of content
+- 🔍 **"Give me examples"** - Real-world examples of concepts
 
-### Separated Audio Pipeline
-```mermaid
-graph LR
-    A[🎤 Voice Input] --> B[gpt-4o-mini-transcribe]
-    B --> C[Text Message]
-    C --> D[gpt-4o-mini-audio-preview]
-    D --> E[Text + Audio Response]
-    E --> F[🔊 Audio Playback]
-    
-    G[Static System Message] --> H[OpenAI Cache]
-    I[Dynamic Context] --> D
-    H --> D
-```
+---
 
-### Project Structure
-```
-VideoWatchingAssistant/
-├── chrome-extension/
-│   ├── manifest.json              # Extension configuration
-│   ├── src/
-│   │   ├── content.js             # Main logic - YouTube page injection
-│   │   ├── background.js          # Background service worker
-│   │   ├── popup.html            # Configuration UI
-│   │   ├── popup.js              # Configuration logic
-│   │   ├── styles.css            # UI styles
-│   │   └── utils/
-│   │       ├── openai-client.js  # OpenAI client with audio optimization
-│   │       ├── subtitle-extractor.js  # Subtitle extraction
-│   │       ├── voice-recorder.js # VAD-based smart recording
-│   │       └── crypto-js.min.js  # Encryption library
-│   ├── icons/                    # Extension icons
-│   └── GPT4O_AUDIO_UPGRADE.md   # Technical upgrade documentation
-├── README.md                     # Project documentation
-└── reference-get-subtitle.js    # Original subtitle extraction reference
-```
+## 💡 Perfect For
 
-## 📊 API Cost Analysis
+### 📚 **Education & Learning**
+- Online courses and tutorials
+- Language learning videos
+- Academic lectures and seminars
+- Professional training content
 
-### Usage Cost (Per Conversation)
-- **Voice Transcription**: ~$0.006/minute (5-second recording ≈ $0.0005)
-- **AI Conversation**: ~$0.0015/1000 tokens (average 200 tokens ≈ $0.0003)  
-- **Audio Generation**: ~$0.015/1000 characters (average 100 characters ≈ $0.0015)
+### 🎯 **Content Types**
+- Programming tutorials
+- Science documentaries
+- Business presentations
+- Design courses
+- History lessons
 
-**Total per conversation: ~$0.0023 (≈ ¥0.017)**
+### 🌍 **Language Support**
+- Works with any video that has subtitles
+- Helps with pronunciation and vocabulary
+- Supports multilingual content
 
-### Monthly Cost Estimation
-- **Light Usage** (5 conversations/day): ~$0.35/month
-- **Medium Usage** (20 conversations/day): ~$1.40/month
-- **Heavy Usage** (50 conversations/day): ~$3.50/month
+---
 
-### Cost Optimization Benefits
-- **OpenAI Prefix Caching**: Static system messages cached server-side
-- **Audio ID References**: Assistant audio responses reused across conversations
-- **Text-only User Input**: User voice transcribed once, subsequent interactions use text
-- **Multi-turn Efficiency**: Significant token savings in extended conversations
+## 💰 Cost Information
 
-## 🎯 Use Cases
+### OpenAI API Usage
+- **Approximate cost**: ~$0.007 per question
+- **Example**: 10 questions ≈ $0.07 USD
+- **Your usage**: Depends on video length and question complexity
 
-### Learning Scenarios
-```javascript
-// Example Conversation
-User: "Can you repeat what he just said?"
-AI: "The speaker mentioned that database design is crucial for project success. He explained that databases should be designed to meet specific requirements and ensure efficient data storage and retrieval."
+### Cost Breakdown
+- Voice transcription: ~$0.0005 per question
+- AI processing: ~$0.0015 per question  
+- Audio response: ~$0.005 per question
 
-User: "What are the specific requirements?"
-AI: "The specific requirements include data integrity, scalability, performance optimization, and security. The speaker emphasized that these should be defined before starting the database design process."
-```
+*Costs may vary based on video length and conversation complexity*
 
-### Educational Content
-- 🔬 **Science Courses**: Explaining complex concepts and experimental procedures
-- 💻 **Programming Tutorials**: Code explanation and debugging techniques
-- 📈 **Business Analysis**: Data interpretation and case studies
-- 🎨 **Design Courses**: Creative concepts and technique explanations
-- 🌍 **Language Learning**: Pronunciation help and grammar clarification
+---
 
-## ⚙️ Advanced Configuration
+## 🔒 Privacy & Security
 
-### API Model Settings
-```javascript
-// Configurable in openai-client.js
-const apiSettings = {
-    transcription: {
-        model: 'gpt-4o-mini-transcribe',
-        response_format: 'text'
-    },
-    audioCompletion: {
-        model: 'gpt-4o-mini-audio-preview',
-        modalities: ['text', 'audio'],
-        max_completion_tokens: 1024,
-        temperature: 1.0,
-        audio: {
-            voice: 'alloy',
-            format: 'wav'
-        }
-    }
-};
-```
+### Your Data is Safe
+- ✅ **API key stored locally** on your device only
+- ✅ **Voice recordings** processed temporarily and not stored
+- ✅ **Conversation history** kept locally with automatic cleanup
+- ✅ **No personal data** collected or transmitted
 
-### Voice Options
-| Voice Name | Characteristics | Best For |
-|------------|----------------|----------|
-| alloy | Neutral, clear | General learning |
-| echo | Male, stable | Technical content |
-| fable | Gentle, friendly | Language learning |
-| onyx | Deep, professional | Business content |
-| nova | Young, energetic | Science content |
-| shimmer | Female, warm | Humanities content |
+### What We Access
+- Current YouTube video information (title, timestamp)
+- Video subtitles for context
+- Your voice input when you click the microphone
 
-### Caching Configuration
-```javascript
-// Conversation and caching settings
-const cacheSettings = {
-    maxHistoryLength: 20,        // Messages per video
-    maxVideoCount: 5,            // Cached video conversations
-    audioExpiry: 5 * 60 * 1000,  // Audio cache cleanup interval
-    contextSentencesBefore: 5    // Subtitle context range
-};
-```
+---
 
-## 🔧 Development Guide
+## ❓ Troubleshooting
 
-### Local Development
-```bash
-# 1. Clone the project
-git clone https://github.com/your-username/youtube-voice-assistant.git
-cd youtube-voice-assistant
+### Common Issues
 
-# 2. Load into Chrome
-# Open chrome://extensions/
-# Enable Developer mode
-# Click "Load unpacked"
-# Select chrome-extension/ directory
-```
+**🔧 "No subtitles available"**
+- Try videos with auto-generated or manual subtitles
+- Upload SRT files manually if needed
 
-### Testing Tools
-The project includes several testing utilities:
-```
-chrome-extension/
-├── test-vad.html                 # VAD functionality testing
-├── test-subtitle-debug.html      # Subtitle extraction debugging
-├── test-encryption-debug.html    # Encryption validation
-└── start-test-server.py         # Local test server
-```
+**🔧 "API connection failed"**
+- Check your OpenAI API key is correct
+- Ensure you have sufficient API credits
 
-### Debug Console Outputs
-```javascript
-// Performance timing
-⏱️ ===== Smart Voice Query (Separated) 时间统计 =====
-🎤 录音阶段:     2847ms
-🎯 转录+对话:    2156ms
-📢 音频播放:     3200ms
-📊 AI处理时间: 2156ms (26% of total)
+**🔧 "Microphone not working"**
+- Allow microphone permission when prompted
+- Try refreshing the YouTube page
 
-// Caching efficiency
-💾 静态系统消息长度: 1250 字符 (可缓存)
-🔄 动态系统消息长度: 125 字符
-💾 助手音频缓存效率: 75.0% (3/4)
-🎤 用户音频消息: 4 (始终重新发送)
-```
+**🔧 "No floating button visible"**
+- Make sure you're on a YouTube video page
+- Try refreshing the page
+- Check if the extension is enabled and pinned
 
-### Custom Subtitle Parsing
-```javascript
-// Extend subtitle-extractor.js for additional formats
-async function parseCustomSubtitles(content, format) {
-    switch(format) {
-        case 'vtt':
-            return parseVTTToTimestamps(content);
-        case 'ass':
-            return parseASSToTimestamps(content);
-        default:
-            return parseSRTToTimestamps(content);
-    }
-}
-```
+---
 
-## 📈 Performance Features
+## 🚀 Coming Soon
 
-### Smart Recording
-- **VAD Integration**: Automatic speech end detection using neural networks
-- **Fallback Mechanism**: Traditional 5-second recording when VAD fails
-- **Audio Preprocessing**: Noise reduction and format optimization
+- Chrome Web Store publication
+- Support for more video platforms
+- Offline subtitle processing
+- Custom voice selection
+- Enhanced conversation features
 
-### Conversation Management
-- **Per-Video Isolation**: Separate conversation history for each video
-- **LRU Cache**: Automatic cleanup of old video conversations
-- **Context Preservation**: Historical dynamic context saved per message
+---
 
-### Error Handling
-- **Graceful Degradation**: VAD failures automatically fallback to traditional recording
-- **Network Resilience**: Robust error handling for API failures
-- **User Feedback**: Clear status updates throughout the process
+## 🤝 Support & Feedback
 
-## 🌟 Recent Updates
+- 🐛 **Report Issues**: [GitHub Issues](https://github.com/skyjinxx/VideoWatchingAssistant/issues)
+- 💡 **Feature Requests**: Create an issue with the "enhancement" label
 
-### Major Architecture Upgrade
-- **Separated Audio Processing**: Transcription and conversation now use different specialized models
-- **OpenAI Prefix Caching**: Static system messages cached for cost efficiency
-- **Audio ID References**: Assistant audio responses cached and reused
-- **Enhanced Context Management**: Dynamic timestamp and subtitle context per query
-
-### Performance Improvements
-- **Reduced Token Usage**: Significant cost savings through intelligent caching
-- **Faster Response**: Optimized API calls and reduced data transmission
-- **Better Accuracy**: Specialized transcription model for improved speech recognition
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our contributing guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+---
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- [OpenAI](https://openai.com/) for providing the AI models
-- [Chrome Extensions API](https://developer.chrome.com/docs/extensions/) for the platform
-- [VAD Web](https://github.com/ricky0123/vad) for voice activity detection
-- YouTube for the platform and subtitle access
-
-## 📞 Support
-
-If you encounter any issues or have questions:
-
-1. Check the [Issues](https://github.com/your-username/youtube-voice-assistant/issues) page
-2. Create a new issue with detailed description
-3. Join our community discussions
-
 ---
 
-**Built with ❤️ for learners worldwide**
+**🎉 Ready to transform your YouTube learning experience?** 
+
+[Download WatchBuddy](https://github.com/skyjinxx/VideoWatchingAssistant/releases) and start your AI-powered learning journey today! 
