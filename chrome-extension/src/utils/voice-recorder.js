@@ -55,7 +55,7 @@ class SmartVoiceRecorder {
                 negativeSpeechThreshold: 0.35, // Silence detection threshold
                 minSpeechFrames: 16,            // Minimum speech frames
                 preSpeechPadFrames: 16,         // Pre-speech padding frames
-                redemptionFrames: 32,           // Redemption frames (avoid false positives)
+                redemptionFrames: 40,           // Redemption frames (avoid false positives)
                 frameSamples: 512,            // Samples per frame
                 submitUserSpeechOnPause: false // Do not submit audio when paused
             });

@@ -132,7 +132,7 @@ class OpenAIVoiceAssistant {
     /**
      * Add optimized conversation history (supports text caching and dynamic context)
      */
-    addOptimizedConversationHistory(role, content, audioBase64 = null, audioTranscript = null, context = null) {
+    addOptimizedConversationHistory(role, content, audioBase64 = null, audioTranscript = null, context = null, audioId = null) {
         if (!this.currentVideoId) {
             Logger.warn('Audio: No active video, cannot save conversation');
             return;
@@ -155,7 +155,9 @@ class OpenAIVoiceAssistant {
                     content: `Current video playback time: ${currentTime} seconds
 
 Subtitle content around current time position:
-${context.relevantSubtitles || 'No relevant subtitles'}`,
+${context.relevantSubtitles || 'No relevant subtitles'}
+
+REMINDER: Provide audio response - the user is listening, not reading.`,
                     timestamp: Date.now(),
                     messageType: 'dynamic_context',
                     currentTime: currentTime
@@ -185,9 +187,14 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`,
             }
         }
         
-        // For assistant messages, store audio transcript instead of audio ID to avoid generating audio tokens
-        if (role === 'assistant' && audioTranscript) {
-            historyItem.audioTranscript = audioTranscript;
+        // For assistant messages, store audio transcript and audio ID (only for latest message)
+        if (role === 'assistant') {
+            if (audioTranscript) {
+                historyItem.audioTranscript = audioTranscript;
+            }
+            if (audioId) {
+                historyItem.audioId = audioId;
+            }
         }
         
         conversation.push(historyItem);
@@ -515,7 +522,8 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`,
             
             // Save conversation history (using optimized format, user messages don't save audio data)
             this.addOptimizedConversationHistory('user', transcript, null, null, context);
-            this.addOptimizedConversationHistory('assistant', assistantTextContent, null, audioInfo?.transcript || assistantTextContent);
+            // For assistant: save audio ID to maintain voice output, but only for the latest message
+            this.addOptimizedConversationHistory('assistant', assistantTextContent, null, audioInfo?.transcript || assistantTextContent, null, audioInfo?.id);
             
             Logger.log('💾 Saved assistant message with content:', assistantTextContent);
             
@@ -687,7 +695,9 @@ Video ID: ${context.videoId}
 Full Transcript:
 ${context.fullTranscript || 'Loading subtitles...'}
 
-Please provide concise answers (within 30 words) since your response will be converted to speech. Focus on content relevant to the current time position. When asked to repeat what was just said in the video, provide word-by-word accurate repetition without omitting details.`;
+IMPORTANT: Always provide audio responses - your answers will be spoken aloud to the user. Keep responses concise (within 30 words) and conversational for speech output. Focus on content relevant to the current time position. When asked to repeat what was just said in the video, provide word-by-word accurate repetition without omitting details.
+
+Remember: This is a voice-based interaction system. The user expects to HEAR your response, not read it. Always generate audio output.`;
 
         const messages = [
             {
@@ -700,6 +710,11 @@ Please provide concise answers (within 30 words) since your response will be con
         const conversationHistory = this.getCurrentConversationHistory();
         
         Logger.log('🔍 Building messages from conversation history:', conversationHistory.length, 'items');
+        
+        // Find the last assistant message index for audio ID usage
+        const assistantMessages = conversationHistory.filter(msg => msg.role === 'assistant');
+        const lastAssistantIndex = assistantMessages.length > 0 ? 
+            conversationHistory.lastIndexOf(assistantMessages[assistantMessages.length - 1]) : -1;
         
         conversationHistory.forEach((msg, index) => {
             if (msg.role === 'system' && msg.messageType === 'dynamic_context') {
@@ -717,17 +732,29 @@ Please provide concise answers (within 30 words) since your response will be con
                 });
                 Logger.log(`👤 Added user message #${index}:`, msg.content);
             } else if (msg.role === 'assistant') {
-                // Assistant reply: use text content only (no audio ID to avoid generating audio tokens)
-                const assistantContent = msg.content || '[Empty assistant response]';
-                messages.push({
-                    role: 'assistant',
-                    content: assistantContent
-                });
-                Logger.log(`🤖 Added assistant message #${index}:`, assistantContent);
+                // Assistant reply: only the last one uses audio ID, others use transcript
+                const isLastAssistant = index === lastAssistantIndex;
+                
+                if (isLastAssistant && msg.audioId) {
+                    // Last assistant message: use audio ID to maintain voice output
+                    messages.push({
+                        role: 'assistant',
+                        audio: { id: msg.audioId }
+                    });
+                    Logger.log(`🎵 Added assistant message #${index} with audio ID:`, msg.audioId);
+                } else {
+                    // Previous assistant messages: use text content only
+                    const assistantContent = msg.audioTranscript || msg.content || '[Empty assistant response]';
+                    messages.push({
+                        role: 'assistant',
+                        content: assistantContent
+                    });
+                    Logger.log(`🤖 Added assistant message #${index} with text:`, assistantContent);
+                }
                 
                 // Debug: Check if assistant content is empty
-                if (!msg.content || !msg.content.trim()) {
-                    Logger.warn(`⚠️ Assistant message #${index} has empty content! Full message:`, msg);
+                if (!msg.content && !msg.audioTranscript && !msg.audioId) {
+                    Logger.warn(`⚠️ Assistant message #${index} has no content, transcript, or audio ID! Full message:`, msg);
                 }
             }
         });
