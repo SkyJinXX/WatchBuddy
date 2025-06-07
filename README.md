@@ -1,6 +1,6 @@
 # 🤖 WatchBuddy - YouTube Watching Assistant
 
-**Transform passive watching into active learning!** WatchBuddy is a Chrome extension that adds an intelligent AI companion to your YouTube viewing experience. Ask questions about video content using your voice and get instant, context-aware answers.
+**Your intelligent YouTube watching companion!** WatchBuddy is a Chrome extension that adds an AI assistant to your viewing experience. Ask questions about anything you're watching - it knows the full content and your current position, ready to help instantly.
 
 ![Version](https://img.shields.io/badge/version-0.5.4-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Chrome%20Extension-green.svg)
@@ -12,13 +12,13 @@
 
 ### 🎯 **Context-Aware Intelligence**
 - Knows exactly where you are in the video
-- Understands what was just said based on subtitles
-- Provides relevant answers without spoiling future content
+- Understands the full content and current context
+- Provides relevant answers based on your viewing position
 
 ### 🎤 **Natural Voice Interaction**
 - Click the microphone and ask your question naturally
 - Advanced voice detection automatically starts and stops recording
-- Get responses in both text and natural-sounding audio
+- Get responses in natural-sounding audio
 
 ### 🧠 **Smart Learning Assistant**
 - Ask "What did they just say?" or "Explain that concept"
@@ -29,7 +29,7 @@
 
 ## 🎬 Live Demo
 
-**See WatchBuddy in action!** Check out this demo showcasing **language learning** use case:
+**See WatchBuddy in action!** This demo shows **pure listening practice** - no reading subtitles, just listening and asking questions when stuck:
 
 <a href="https://youtu.be/daPXgaeDlCs?utm_source=github&utm_medium=readme&utm_campaign=demo">
   <img src="https://img.youtube.com/vi/daPXgaeDlCs/maxresdefault.jpg" alt="WatchBuddy Demo" width="480" height="270">
@@ -70,46 +70,43 @@
 
 ### Example Questions
 - 🔄 **"What did they just say?"** - Get the last few sentences repeated
+- 🎬 **"What's happening here?"** - Scene or plot explanation
 - 🤔 **"Explain that concept"** - Deeper explanation of topics mentioned
 - 🌍 **"What does [word] mean?"** - Language learning assistance
-- 📚 **"Summarize this section"** - Quick summaries of content
-- 🔍 **"Give me examples"** - Real-world examples of concepts
+- 📚 **"Summarize this video"** - Overall content summary
 
 ---
 
 ## 💡 Perfect For
 
-### 📚 **Education & Learning**
-- Online courses and tutorials
-- Language learning videos
-- Academic lectures and seminars
-- Professional training content
+### 🌍 **Language Learning**
+**Train two key skills**: 
+- 👂 **Listening comprehension** - practice pure listening without reading subtitles
+- 🎤 **Active questioning** - ask for clarification when you miss something
 
-### 🎯 **Content Types**
+### 🎬 **Casual Watching**
+- Ask "Who is this character?" during movies or shows
+- "What's happening in this scene?" for plot clarification
+- "What are they talking about?" when you miss dialogue
+- Get instant summaries and explanations while watching
+
+### 📚 **Educational Content**
+- Online courses and tutorials
+- Academic lectures and seminars
 - Programming tutorials
 - Science documentaries
-- Business presentations
-- Design courses
-- History lessons
 
-### 🌍 **Language Support**
-- Works with any video that has subtitles
-- Helps with pronunciation and vocabulary
-- Supports multilingual content
+
+Works with any video that has subtitles to help build real listening skills instead of reading dependency.
 
 ---
 
 ## 💰 Cost Information
 
 ### OpenAI API Usage
-- **Approximate cost**: ~$0.007 per question
-- **Example**: 10 questions ≈ $0.07 USD
+- **Approximate cost**: ~$0.008 per question
+- **Example**: 10 questions ≈ $0.08 USD
 - **Your usage**: Depends on video length and question complexity
-
-### Cost Breakdown
-- Voice transcription: ~$0.0005 per question
-- AI processing: ~$0.0015 per question  
-- Audio response: ~$0.005 per question
 
 *Costs may vary based on video length and conversation complexity*
 
