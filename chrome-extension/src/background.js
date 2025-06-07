@@ -22,9 +22,10 @@ chrome.runtime.onInstalled.addListener((details) => {
             firstInstall: Date.now()
         });
         
-        // 打开欢迎页面
-        chrome.tabs.create({
-            url: chrome.runtime.getURL('welcome.html')
+        // 打开扩展的popup弹窗
+        chrome.action.openPopup().catch(() => {
+            // 如果无法打开popup，静默失败
+            console.log('WatchBuddy安装成功！请点击扩展图标开始配置。');
         });
     } else if (details.reason === 'update') {
         console.log('YouTube语音助手已更新');

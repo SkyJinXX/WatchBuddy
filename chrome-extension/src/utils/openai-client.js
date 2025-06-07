@@ -156,8 +156,7 @@ class OpenAIVoiceAssistant {
 
 Subtitle content around current time position:
 ${context.relevantSubtitles || 'No relevant subtitles'}
-
-REMINDER: Provide audio response - the user is listening, not reading.`,
+`,
                     timestamp: Date.now(),
                     messageType: 'dynamic_context',
                     currentTime: currentTime
@@ -457,7 +456,7 @@ REMINDER: Provide audio response - the user is listening, not reading.`,
             Logger.log('📝 Transcription result:', transcript);
             
             // Step 2: Build text message array
-            const messages = this.buildOptimizedTextMessages(transcript, context);
+            const messages = await this.buildOptimizedTextMessages(transcript, context);
             
             const requestBody = {
                 model: 'gpt-4o-mini-audio-preview',
@@ -683,21 +682,32 @@ REMINDER: Provide audio response - the user is listening, not reading.`,
     /**
      * Build optimized text message array - supports OpenAI prefix caching
      */
-    buildOptimizedTextMessages(userQuestion, context) {
+    async buildOptimizedTextMessages(userQuestion, context) {
         this.switchToVideo(context.videoId);
         
+        // Get custom prompt from storage
+        let customPrompt = '';
+        try {
+            const result = await chrome.storage.sync.get(['custom_prompt']);
+            customPrompt = result.custom_prompt || '';
+        } catch (error) {
+            Logger.warn('Failed to load custom prompt:', error);
+        }
+        
+        // Use custom prompt if available, otherwise use default
+        const basePrompt = customPrompt || 
+            'You are a YouTube video assistant that answers questions based on video subtitle content. Your answers will be spoken aloud to the user. Keep responses concise (within 30 words) and conversational for speech output. Focus on content relevant to the current time position. When asked to repeat what was just said in the video, provide word-by-word accurate repetition without omitting details.';
+        
         // Static system message (can be cached by OpenAI)
-        const staticSystemMessage = `You are a YouTube video assistant that answers questions based on video subtitle content.
+        const staticSystemMessage = `${basePrompt}
 
 Video: ${context.videoTitle || 'Unknown Title'}
 Video ID: ${context.videoId}
+Description: ${context.videoDescription || 'No description available'}
 
 Full Transcript:
 ${context.fullTranscript || 'Loading subtitles...'}
-
-IMPORTANT: Always provide audio responses - your answers will be spoken aloud to the user. Keep responses concise (within 30 words) and conversational for speech output. Focus on content relevant to the current time position. When asked to repeat what was just said in the video, provide word-by-word accurate repetition without omitting details.
-
-Remember: This is a voice-based interaction system. The user expects to HEAR your response, not read it. Always generate audio output.`;
+`;
 
         const messages = [
             {
@@ -791,25 +801,6 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
         Logger.log(`⏰ Current time: ${currentTime}s, Last time: ${lastTime}s, Time changed: ${currentTime !== lastTime}`);
         
         return messages;
-    }
-
-    /**
-     * Build optimized message array - supports OpenAI prefix caching (audio version, deprecated)
-     * @deprecated Use buildOptimizedTextMessages instead
-     */
-    buildOptimizedMessages(currentAudioBase64, context) {
-        Logger.warn('buildOptimizedMessages (audio version) is deprecated, please use buildOptimizedTextMessages');
-        return this.buildOptimizedTextMessages('Voice input', context);
-    }
-
-    /**
-     * Build YouTube assistant conversation messages (backward compatibility)
-     * @deprecated Use buildOptimizedMessages instead
-     */
-    buildYouTubeAssistantMessages(userQuestion, context) {
-        Logger.warn('buildYouTubeAssistantMessages is deprecated, please use buildOptimizedMessages');
-        // This method is now only for backward compatibility, won't actually be called
-        return [];
     }
 
     /**

@@ -20,6 +20,9 @@ async function initPopup() {
     // Load privacy settings
     await loadPrivacySettings();
     
+    // Load custom prompt settings
+    await loadCustomPrompt();
+    
     // Check current page
     await checkCurrentPage();
     
@@ -110,6 +113,22 @@ async function loadPrivacySettings() {
 }
 
 /**
+ * Load custom prompt settings
+ */
+async function loadCustomPrompt() {
+    try {
+        const defaultPrompt = 'You are a YouTube video assistant that answers questions based on video subtitle content. Your answers will be spoken aloud to the user. Keep responses concise (within 30 words) and conversational for speech output. Focus on content relevant to the current time position. When asked to repeat what was just said in the video, provide word-by-word accurate repetition without omitting details.';
+        
+        const result = await chrome.storage.sync.get(['custom_prompt']);
+        const customPrompt = result.custom_prompt !== undefined ? result.custom_prompt : defaultPrompt;
+        document.getElementById('customPrompt').value = customPrompt;
+        Logger.log('Custom prompt loaded:', customPrompt === defaultPrompt ? 'Using default prompt' : 'Custom prompt set');
+    } catch (error) {
+        Logger.error('Failed to load custom prompt:', error);
+    }
+}
+
+/**
  * Save voice settings
  */
 async function saveVoiceSettings() {
@@ -155,6 +174,48 @@ async function savePrivacySettings() {
     } catch (error) {
         Logger.error('Failed to save privacy settings:', error);
         showStatus('Failed to save privacy settings', 'error');
+    }
+}
+
+/**
+ * Save custom prompt
+ */
+async function saveCustomPrompt() {
+    try {
+        const customPrompt = document.getElementById('customPrompt').value.trim();
+        await chrome.storage.sync.set({ custom_prompt: customPrompt });
+        Logger.log('Custom prompt saved:', customPrompt ? 'Custom prompt set' : 'Using default prompt');
+        
+        showStatus(customPrompt ? 'Custom prompt saved!' : 'Prompt reset to default', 'success');
+        
+        // Notify content script to reload assistant with new prompt
+        notifyContentScript();
+        
+    } catch (error) {
+        Logger.error('Failed to save custom prompt:', error);
+        showStatus('Failed to save custom prompt', 'error');
+    }
+}
+
+/**
+ * Reset custom prompt to default
+ */
+async function resetCustomPrompt() {
+    try {
+        const defaultPrompt = 'You are a YouTube video assistant that answers questions based on video subtitle content. Your answers will be spoken aloud to the user. Keep responses concise (within 30 words) and conversational for speech output. Focus on content relevant to the current time position. When asked to repeat what was just said in the video, provide word-by-word accurate repetition without omitting details.';
+        
+        document.getElementById('customPrompt').value = defaultPrompt;
+        await chrome.storage.sync.set({ custom_prompt: defaultPrompt });
+        Logger.log('Custom prompt reset to default');
+        
+        showStatus('Prompt reset to default', 'success');
+        
+        // Notify content script to reload assistant with default prompt
+        notifyContentScript();
+        
+    } catch (error) {
+        Logger.error('Failed to reset custom prompt:', error);
+        showStatus('Failed to reset custom prompt', 'error');
     }
 }
 
@@ -534,6 +595,10 @@ function bindEventListeners() {
     
     // Analytics switch
     document.getElementById('analyticsEnabled').addEventListener('change', savePrivacySettings);
+    
+    // Custom prompt buttons
+    document.getElementById('savePromptBtn').addEventListener('click', saveCustomPrompt);
+    document.getElementById('resetPromptBtn').addEventListener('click', resetCustomPrompt);
     
     // File upload
     const fileInput = document.getElementById('subtitleFile');

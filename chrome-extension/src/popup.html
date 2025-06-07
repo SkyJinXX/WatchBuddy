@@ -444,9 +444,7 @@
                     </label>
                 </div>
             </div>
-
-
-
+            
             <!-- Subtitle Management -->
             <div class="section" id="subtitleSection" style="display: none;">
                 <h3>📝 Subtitle Management</h3>
@@ -455,7 +453,7 @@
                 <div id="subtitleStatus" class="subtitle-status empty">
                     ❌ No subtitles available for current video
                 </div>
-
+                
                 <!-- Manual Subtitle Upload -->
                 <div class="input-group">
                     <label>Manual SRT Subtitle Upload</label>
@@ -469,11 +467,30 @@
                         If automatic subtitle retrieval fails, you can manually download and upload SRT files from sites like <a href="https://downsub.com" target="_blank" id="downsubLink">downsub.com</a>
                     </div>
                 </div>
-
+                
                 <div style="margin-top: 10px;">
                     <button class="btn btn-danger" id="clearSubtitleBtn">Clear Current Subtitles</button>
                 </div>
             </div>
+
+            <!-- Custom Prompt Settings -->
+            <div class="section">
+                <h3>🎯 Custom Prompt</h3>
+                <div class="input-group">
+                    <label for="customPrompt">AI Assistant Behavior</label>
+                    <textarea id="customPrompt" placeholder="Default prompt will be loaded here. You can modify it to customize how the AI assistant behaves..."></textarea>
+                    <div class="help-text">
+                        🎭 Customize how the AI assistant responds to your questions. The default prompt is loaded by default for easy modification.<br>
+                        💡 Example: "You are a language learning tutor. Always explain difficult words and provide pronunciation tips."
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button class="btn btn-secondary" id="resetPromptBtn" style="flex: 1;">Reset to Default</button>
+                    <button class="btn" id="savePromptBtn" style="flex: 1;">Save Prompt</button>
+                </div>
+            </div>
+
             <!-- Privacy Settings -->
             <div class="section">
                 <h3>🔒 Privacy Settings</h3>

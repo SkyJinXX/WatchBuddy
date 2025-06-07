@@ -682,6 +682,7 @@ class YouTubeVoiceAssistant {
     async getVideoContext() {
         const videoId = this.getCurrentVideoId();
         const videoTitle = this.getVideoTitle();
+        const videoDescription = this.getVideoDescription();
         const currentTime = this.getCurrentTime();
         
         // Prioritize manually uploaded subtitles, otherwise use API fetched subtitles
@@ -721,6 +722,7 @@ class YouTubeVoiceAssistant {
         return {
             videoId: videoId,
             videoTitle: videoTitle,
+            videoDescription: videoDescription,
             currentTime: currentTime,
             relevantSubtitles: relevantSubtitles,
             fullTranscript: fullTranscript
@@ -737,6 +739,60 @@ class YouTubeVoiceAssistant {
     getVideoTitle() {
         const titleElement = document.querySelector('h1.ytd-watch-metadata yt-formatted-string');
         return titleElement ? titleElement.textContent.trim() : 'Unknown Video';
+    }
+
+    getVideoDescription() {
+        try {
+            // Try to find the description element
+            const descriptionElement = document.querySelector('#description');
+            if (descriptionElement) {
+                // Get all text content from the description element and its children
+                const allTextNodes = [];
+                const walker = document.createTreeWalker(
+                    descriptionElement,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
+                
+                let node;
+                while (node = walker.nextNode()) {
+                    const text = node.textContent.trim();
+                    if (text) {
+                        allTextNodes.push(text);
+                    }
+                }
+                
+                const description = allTextNodes.join(' ').trim();
+                Logger.log('Content: Video description extracted:', description.substring(0, 200) + '...');
+                return description || 'No description available';
+            }
+            
+            // Fallback: try alternative selectors
+            const fallbackSelectors = [
+                '#description-text',
+                '.description-text',
+                '[id*="description"]',
+                '.ytd-video-secondary-info-renderer #description'
+            ];
+            
+            for (const selector of fallbackSelectors) {
+                const element = document.querySelector(selector);
+                if (element) {
+                    const text = element.textContent.trim();
+                    if (text) {
+                        Logger.log('Content: Video description found with fallback selector:', selector);
+                        return text;
+                    }
+                }
+            }
+            
+            Logger.log('Content: No video description found');
+            return 'No description available';
+        } catch (error) {
+            Logger.warn('Content: Error extracting video description:', error);
+            return 'No description available';
+        }
     }
 
     getCurrentTime() {
