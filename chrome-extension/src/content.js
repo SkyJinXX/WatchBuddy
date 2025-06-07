@@ -743,51 +743,48 @@ class YouTubeVoiceAssistant {
 
     getVideoDescription() {
         try {
-            // Try to find the description element
-            const descriptionElement = document.querySelector('#description');
-            if (descriptionElement) {
-                // Get all text content from the description element and its children
-                const allTextNodes = [];
-                const walker = document.createTreeWalker(
-                    descriptionElement,
-                    NodeFilter.SHOW_TEXT,
-                    null,
-                    false
-                );
-                
-                let node;
-                while (node = walker.nextNode()) {
-                    const text = node.textContent.trim();
-                    if (text) {
-                        allTextNodes.push(text);
-                    }
-                }
-                
-                const description = allTextNodes.join(' ').trim();
-                Logger.log('Content: Video description extracted:', description.substring(0, 200) + '...');
-                return description || 'No description available';
-            }
-            
-            // Fallback: try alternative selectors
-            const fallbackSelectors = [
-                '#description-text',
-                '.description-text',
-                '[id*="description"]',
-                '.ytd-video-secondary-info-renderer #description'
+            // Target the specific #snippet elements that contain full description content
+            const snippetSelectors = [
+                // Path 1: Full description in expandable section
+                'ytd-structured-description-content-renderer ytd-expandable-video-description-body-renderer ytd-text-inline-expander #snippet',
+                // Path 2: Full description in watch metadata
+                'ytd-watch-metadata ytd-text-inline-expander #snippet',
+                // Fallback: any snippet in description area
+                'ytd-expandable-video-description-body-renderer #snippet',
+                'ytd-text-inline-expander #snippet',
+                '#snippet'
             ];
             
-            for (const selector of fallbackSelectors) {
-                const element = document.querySelector(selector);
-                if (element) {
-                    const text = element.textContent.trim();
-                    if (text) {
-                        Logger.log('Content: Video description found with fallback selector:', selector);
-                        return text;
+            for (const selector of snippetSelectors) {
+                const snippetElement = document.querySelector(selector);
+                if (snippetElement) {
+                    // Get all text content from the snippet element and its children using TreeWalker
+                    const allTextNodes = [];
+                    const walker = document.createTreeWalker(
+                        snippetElement,
+                        NodeFilter.SHOW_TEXT,
+                        null,
+                        false
+                    );
+                    
+                    let node;
+                    while (node = walker.nextNode()) {
+                        const text = node.textContent.trim();
+                        if (text) {
+                            allTextNodes.push(text);
+                        }
+                    }
+                    
+                    const description = allTextNodes.join(' ').trim();
+                    if (description) {
+                        Logger.log('Content: Video description extracted with selector:', selector);
+                        Logger.log('Content: Description preview:', description.substring(0, 200) + '...');
+                        return description;
                     }
                 }
             }
             
-            Logger.log('Content: No video description found');
+            Logger.log('Content: No video description snippet found');
             return 'No description available';
         } catch (error) {
             Logger.warn('Content: Error extracting video description:', error);
