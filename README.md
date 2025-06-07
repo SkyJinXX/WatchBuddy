@@ -34,7 +34,6 @@
 <a href="https://youtu.be/daPXgaeDlCs?utm_source=github&utm_medium=readme&utm_campaign=demo">
   <img src="https://img.youtube.com/vi/daPXgaeDlCs/maxresdefault.jpg" alt="WatchBuddy Demo" width="480" height="270">
 </a>
----
 
 ## 🚀 Quick Start Guide
 
