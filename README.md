@@ -27,6 +27,15 @@
 
 ---
 
+## 🎬 Live Demo
+
+**See WatchBuddy in action!** Check out this demo showcasing **language learning** use case:
+
+<a href="https://youtu.be/daPXgaeDlCs?utm_source=github&utm_medium=readme&utm_campaign=demo">
+  <img src="https://img.youtube.com/vi/daPXgaeDlCs/maxresdefault.jpg" alt="WatchBuddy Demo" width="480" height="270">
+</a>
+---
+
 ## 🚀 Quick Start Guide
 
 ### 📥 Installation
@@ -171,4 +180,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **🎉 Ready to transform your YouTube learning experience?** 
 
-[Download WatchBuddy](https://github.com/skyjinxx/WatchBuddy/releases) and start your AI-powered learning journey today! 
+📺 **[Watch Demo Video](https://youtu.be/daPXgaeDlCs?si=l5PZNmPGzordfYtU&utm_source=github&utm_medium=readme&utm_campaign=cta)** | 📥 **[Download WatchBuddy](https://github.com/skyjinxx/WatchBuddy/releases)**
+
+Start your AI-powered learning journey today! 
