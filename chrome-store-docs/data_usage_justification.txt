@@ -1,5 +1,5 @@
 DATA USAGE JUSTIFICATION
-YouTube Watching Assistant v0.5.2
+YouTube Watching Assistant v0.5.3
 
 ================================================================================
 DATA COLLECTION OVERVIEW

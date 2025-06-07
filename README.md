@@ -2,7 +2,7 @@
 
 **Transform passive watching into active learning!** WatchBuddy is a Chrome extension that adds an intelligent AI companion to your YouTube viewing experience. Ask questions about video content using your voice and get instant, context-aware answers.
 
-![Version](https://img.shields.io/badge/version-0.5.2-blue.svg)
+![Version](https://img.shields.io/badge/version-0.5.3-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Chrome%20Extension-green.svg)
 ![AI](https://img.shields.io/badge/powered%20by-OpenAI-orange.svg)
 
