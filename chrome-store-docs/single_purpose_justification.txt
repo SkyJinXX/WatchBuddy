@@ -1,5 +1,5 @@
 SINGLE PURPOSE JUSTIFICATION
-YouTube Watching Assistant v0.5.3
+YouTube Watching Assistant v0.5.4
 
 ================================================================================
 PRIMARY PURPOSE STATEMENT
@@ -114,7 +114,7 @@ Focused Functionality:
 The extension performs one specific task - enabling AI-powered Q&A for YouTube videos. All code, features, and permissions align with this singular goal.
 
 No Feature Creep:
-Version 0.5.3 maintains focus on core purpose while improving user experience through better VAD, manual subtitle support, and optimized AI responses.
+Version 0.5.4 maintains focus on core purpose while improving user experience through better VAD, manual subtitle support, and optimized AI responses.
 
 Clear User Value:
 Users understand exactly what the extension does from its name and description. The functionality matches user expectations for a "YouTube Watching Assistant."

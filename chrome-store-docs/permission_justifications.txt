@@ -1,5 +1,5 @@
 CHROME EXTENSION PERMISSION JUSTIFICATIONS
-YouTube Watching Assistant v0.5.3
+YouTube Watching Assistant v0.5.4
 
 ================================================================================
 1. ACTIVE TAB PERMISSION JUSTIFICATION
