@@ -5,7 +5,7 @@ alwaysApply: true
 ---
 # Technical Implementation Details
 
-## Manual Subtitle Upload System (v0.5.2)
+## Manual Subtitle Upload System
 
 ### Implementation in [popup.js](mdc:chrome-extension/src/popup.js) and [content.js](mdc:chrome-extension/src/content.js)
 Provides manual subtitle upload as fallback when API fails:
@@ -229,4 +229,73 @@ chrome.storage.local.set({
 - Input protection: Prevents clearing user content during updates
 - Reduced update frequency: Status updates every 5 seconds instead of 2
 - Focus detection: Skips updates when user is actively editing
+
+## Debug and Logging System
+
+### Logger Implementation (in [content.js](mdc:chrome-extension/src/content.js))
+Centralized logging system with configurable levels:
+
+```javascript
+const Logger = {
+    DEBUG: 0,
+    INFO: 1,
+    WARN: 2,
+    ERROR: 3,
+    
+    currentLevel: 1, // INFO level by default
+    
+    debug: (message, ...args) => {
+        if (Logger.currentLevel <= Logger.DEBUG) {
+            console.log(`[WatchBuddy DEBUG] ${message}`, ...args);
+        }
+    },
+    
+    info: (message, ...args) => {
+        if (Logger.currentLevel <= Logger.INFO) {
+            console.log(`[WatchBuddy INFO] ${message}`, ...args);
+        }
+    },
+    
+    warn: (message, ...args) => {
+        if (Logger.currentLevel <= Logger.WARN) {
+            console.warn(`[WatchBuddy WARN] ${message}`, ...args);
+        }
+    },
+    
+    error: (message, ...args) => {
+        if (Logger.currentLevel <= Logger.ERROR) {
+            console.error(`[WatchBuddy ERROR] ${message}`, ...args);
+        }
+    }
+};
+```
+
+### Status Display System
+Dynamic status updates with smart text handling:
+
+```javascript
+// Status display with dynamic sizing
+function updateStatus(message, isError = false) {
+    const statusElement = document.getElementById('watchbuddy-status');
+    if (statusElement) {
+        statusElement.textContent = message;
+        statusElement.className = `watchbuddy-status ${isError ? 'error' : ''}`;
+        
+        // Auto-hide after delay for non-error messages
+        if (!isError) {
+            setTimeout(() => {
+                if (statusElement.textContent === message) {
+                    statusElement.style.display = 'none';
+                }
+            }, 3000);
+        }
+    }
+}
+```
+
+### UI State Management
+- **Input Protection**: Prevents clearing user input during periodic updates
+- **Focus Detection**: Skips updates when user is actively editing
+- **Dynamic Text Handling**: Automatic text wrapping and sizing for status messages
+- **Error State Management**: Persistent error display until resolved
 

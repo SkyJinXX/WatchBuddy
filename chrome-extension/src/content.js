@@ -857,23 +857,40 @@ class YouTubeVoiceAssistant {
     /**
      * Get current subtitle context from timestamps
      */
-    getCurrentSubtitleContextFromTimestamps(timestamps, currentTime, contextRange = 10) {
-        // Find relevant subtitles based on current time
-        const relevant = timestamps.filter(entry => entry.start >= currentTime - contextRange && entry.end <= currentTime);
+    getCurrentSubtitleContextFromTimestamps(timestamps, currentTime, sentenceCount = null) {
+        // Use configured sentence count or default
+        const targetSentences = sentenceCount || this.contextSentencesBefore;
         
-        // Concatenate text from relevant subtitles
-        return relevant.map(entry => entry.text).join(' ');
+        // Find subtitles that are before or at current time
+        const beforeOrCurrent = timestamps.filter(entry => entry.start <= currentTime);
+        
+        // Sort by start time (chronological order)
+        beforeOrCurrent.sort((a, b) => a.start - b.start);
+        
+        // Take the last N sentences (most recent before current time)
+        const recentEntries = beforeOrCurrent.slice(-targetSentences);
+        
+        // Concatenate text from recent subtitles
+        const contextText = recentEntries.map(entry => entry.text).join(' ');
+        
+        Logger.log(`Content: Found ${recentEntries.length}/${targetSentences} subtitle entries before time ${currentTime}s`);
+        Logger.log(`Content: Relevant subtitle context: "${contextText}"`);
+        
+        return contextText;
     }
 
     /**
      * Get current subtitle context
      */
-    getCurrentSubtitleContext(currentTime, contextRange = 10) {
+    getCurrentSubtitleContext(currentTime) {
         // Use API subtitles if available
-        if (this.subtitles) {
-            return this.getCurrentSubtitleContextFromTimestamps(this.subtitles, currentTime, contextRange);
+        if (this.subtitles && this.subtitles.length > 0) {
+            Logger.log(`Content: Getting subtitle context for time ${currentTime}s from ${this.subtitles.length} subtitle entries`);
+            return this.getCurrentSubtitleContextFromTimestamps(this.subtitles, currentTime);
+        } else {
+            Logger.log(`Content: No subtitles available for context (subtitles: ${this.subtitles ? this.subtitles.length : 'null'})`);
+            return '';
         }
-        return '';
     }
 
     /**

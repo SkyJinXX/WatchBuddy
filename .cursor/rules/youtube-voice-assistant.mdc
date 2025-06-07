@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-# YouTube Watching Assistant Chrome Extension - Project Overview
+# WatchBuddy Chrome Extension - Project Overview
 
 ## Project Description
 This is a Chrome extension that provides AI-powered voice interaction for YouTube videos. Users can ask questions about video content through voice input and receive intelligent responses based on the video's subtitles.
@@ -21,11 +21,10 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 
 ### Main Directory
 - [README.md](mdc:README.md) - Project documentation and setup instructions
-- [INSTALL.md](mdc:INSTALL.md) - Installation guide
-- [TEST_GUIDE.md](mdc:TEST_GUIDE.md) - Testing procedures
-- [DEPLOYMENT_CHECKLIST.md](mdc:DEPLOYMENT_CHECKLIST.md) - Deployment guidelines
 - [reference-get-subtitle.js](mdc:reference-get-subtitle.js) - Original Tampermonkey script reference
-- [test-encryption-debug.html](mdc:test-encryption-debug.html) - Encryption debugging tool
+- [package.json](mdc:package.json) - Node.js dependencies and scripts
+- [create-release.js](mdc:create-release.js) - Release automation script
+- [prepare-release.js](mdc:prepare-release.js) - Release preparation script
 
 ### Chrome Extension Core (`chrome-extension/`)
 - [manifest.json](mdc:chrome-extension/manifest.json) - Extension manifest with permissions and configuration
@@ -43,12 +42,8 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 - [ort.js](mdc:chrome-extension/src/utils/ort.js) - ONNX Runtime for VAD processing (3.8MB)
 - [vad-web.js](mdc:chrome-extension/src/utils/vad-web.js) - Voice Activity Detection library
 
-### Testing and Debug Tools
-- [test-vad.html](mdc:chrome-extension/test-vad.html) - VAD functionality testing
-- [test-subtitle-debug.html](mdc:chrome-extension/test-subtitle-debug.html) - Subtitle extraction debugging
-- [test-encryption-debug.html](mdc:chrome-extension/test-encryption-debug.html) - Encryption validation
-- [start-test-server.py](mdc:chrome-extension/start-test-server.py) - Local test server
-- [DEBUG_GUIDE.md](mdc:chrome-extension/DEBUG_GUIDE.md) - Debugging procedures
+
+
 
 ### Assets
 - [icons/](mdc:chrome-extension/icons) - Extension icons (16px, 48px, 128px)
@@ -77,7 +72,7 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 - Fallback to traditional 5-second recording
 - Smart audio preprocessing and format conversion
 
-#### 3. OpenAI Integration (v0.5.2)
+#### 3. OpenAI Integration
 - **Optimized Message Structure**: Static + dynamic context separation
 - **Prefix Caching**: 30-50% cost reduction through cacheable static content
 - **Temperature**: Set to 1.0 for more creative responses
@@ -107,7 +102,7 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 - Local storage for conversation history and manual subtitles
 - Automatic cleanup of expired data (7-day conversations, 30-day subtitles)
 
-## User Workflow (v0.5.2)
+## User Workflow
 
 ### Standard Operation
 1. User visits YouTube video
@@ -152,4 +147,27 @@ This is a Chrome extension that provides AI-powered voice interaction for YouTub
 - No external script loading in content scripts
 - CORS handled through background proxy
 - Manual subtitle data stored locally only
+
+## Development Guidelines
+
+### Code Style and Patterns
+- Use modern JavaScript ES6+ features (async/await, arrow functions, destructuring)
+- Implement proper error handling with try-catch blocks
+- Use the centralized Logger system for consistent logging
+- Follow Chrome Extension Manifest V3 patterns
+- Maintain separation of concerns between content scripts and background scripts
+
+### UI/UX Principles
+- Provide clear user feedback through status messages
+- Implement graceful fallbacks for failed operations
+- Protect user input from being cleared during updates
+- Use consistent styling across all components
+- Ensure accessibility and responsive design
+
+### Performance Considerations
+- Lazy load heavy libraries (VAD, ONNX Runtime) only when needed
+- Implement efficient caching strategies for API responses
+- Use Chrome storage APIs appropriately (sync vs local)
+- Clean up resources and event listeners properly
+- Optimize message passing between scripts
 

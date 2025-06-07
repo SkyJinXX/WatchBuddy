@@ -14,8 +14,8 @@ class OpenAIVoiceAssistant {
         this.maxHistoryLength = 20; // Maximum 20 conversation records per video
         this.maxVideoCount = 10; // Maximum cache for 5 videos' conversation history
 
-        // Audio ID cache management
-        this.audioCache = new Map(); // audioId -> { data, transcript, expiresAt }
+        // Audio cache no longer needed (using text-only responses to avoid audio tokens)
+        this.audioCache = new Map(); // Kept for backward compatibility
         this.cleanupInterval = null;
 
         // Listen for page unload to clean up all conversation history
@@ -130,41 +130,64 @@ class OpenAIVoiceAssistant {
     }
 
     /**
-     * Add optimized conversation history (supports audio ID and dynamic context)
+     * Add optimized conversation history (supports text caching and dynamic context)
      */
-    addOptimizedConversationHistory(role, content, audioBase64 = null, audioId = null, context = null) {
+    addOptimizedConversationHistory(role, content, audioBase64 = null, audioTranscript = null, context = null) {
         if (!this.currentVideoId) {
             Logger.warn('Audio: No active video, cannot save conversation');
             return;
         }
 
         const conversation = this.getCurrentConversationHistory();
+        
+        // For user messages, check if we need to add a dynamic system message first
+        if (role === 'user' && context) {
+            const currentTime = Math.floor(context.currentTime);
+            
+            // Check if time has changed since last user message
+            const lastUserMessage = [...conversation].reverse().find(msg => msg.role === 'user');
+            const lastTime = lastUserMessage ? lastUserMessage.currentTime : null;
+            
+            if (currentTime !== lastTime) {
+                // Add dynamic system message before user message
+                const dynamicSystemMessage = {
+                    role: 'system',
+                    content: `Current video playback time: ${currentTime} seconds
+
+Subtitle content around current time position:
+${context.relevantSubtitles || 'No relevant subtitles'}`,
+                    timestamp: Date.now(),
+                    messageType: 'dynamic_context',
+                    currentTime: currentTime
+                };
+                
+                conversation.push(dynamicSystemMessage);
+                Logger.log(`📍 Added dynamic system message for time ${currentTime}s`);
+            } else {
+                Logger.log(`⏰ Time unchanged (${currentTime}s), skipping dynamic system message`);
+            }
+        }
+        
+        // Add the main message (user or assistant)
         const historyItem = {
             role: role,
             content: content,
             timestamp: Date.now()
         };
         
-        // Add audio information and dynamic context for user messages
+        // Add metadata for user messages
         if (role === 'user') {
-            if (audioId) {
-                historyItem.audioId = audioId;
-            }
             if (audioBase64) {
                 historyItem.audioBase64 = audioBase64;
             }
-            // Save the dynamic context at that time (timestamp and relevant subtitles)
             if (context) {
-                historyItem.dynamicContext = `Current video playback time: ${Math.floor(context.currentTime)} seconds
-
-Subtitle content around current time position:
-${context.relevantSubtitles || 'No relevant subtitles'}`;
+                historyItem.currentTime = Math.floor(context.currentTime);
             }
         }
         
-        // Add audio ID for assistant messages (if available)
-        if (role === 'assistant' && audioId) {
-            historyItem.audioId = audioId;
+        // For assistant messages, store audio transcript instead of audio ID to avoid generating audio tokens
+        if (role === 'assistant' && audioTranscript) {
+            historyItem.audioTranscript = audioTranscript;
         }
         
         conversation.push(historyItem);
@@ -173,12 +196,15 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
         this.videoConversations.delete(this.currentVideoId);
         this.videoConversations.set(this.currentVideoId, conversation);
 
-        // Clean up overly long history
+        // Clean up overly long history (considering system messages)
         if (conversation.length > this.maxHistoryLength) {
-            for (let i = 0; i < conversation.length - 1; i++) {
-                if (conversation[i].role === 'user' && 
-                    conversation[i + 1].role === 'assistant') {
-                    conversation.splice(i, 2);
+            // Find and remove the oldest user-system-assistant triplet
+            for (let i = 0; i < conversation.length - 2; i++) {
+                if ((conversation[i].role === 'system' && conversation[i].messageType === 'dynamic_context') ||
+                    conversation[i].role === 'user') {
+                    // Remove system + user + assistant (or just user + assistant)
+                    const removeCount = conversation[i].role === 'system' ? 3 : 2;
+                    conversation.splice(i, removeCount);
                     Logger.log('Audio: Current video conversation history too long, removing earliest conversation round');
                     break;
                 }
@@ -464,19 +490,34 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             const audioInfo = choice.message.audio;
             let audioResponse = null;
             
+            // Debug: Log the full response structure
+            Logger.log('🔍 Full API response choice:', choice);
+            Logger.log('📝 Text response:', textResponse);
+            Logger.log('🎵 Audio info:', audioInfo);
+            
             if (audioInfo) {
-                // Cache audio data and ID
-                this.cacheAudioData(audioInfo);
-                
-                // Convert audio data
+                // Convert audio data (no longer cache audio ID to avoid generating audio tokens)
                 audioResponse = await this.base64ToArrayBuffer(audioInfo.data);
                 
-                Logger.log(`🎵 Audio ID: ${audioInfo.id}, Expiry time: ${new Date(audioInfo.expires_at * 1000).toLocaleString()}`);
+                Logger.log(`🎵 Audio received, transcript: ${audioInfo.transcript || 'N/A'}`);
+            }
+            
+            // Determine the best text content for assistant message
+            // Priority: audioInfo.transcript > textResponse > fallback message
+            let assistantTextContent = textResponse;
+            if (audioInfo && audioInfo.transcript && audioInfo.transcript.trim()) {
+                assistantTextContent = audioInfo.transcript;
+                Logger.log('📝 Using audio transcript as assistant text content');
+            } else if (!textResponse || !textResponse.trim()) {
+                assistantTextContent = '[Audio response - no text transcript available]';
+                Logger.warn('⚠️ No text content available for assistant message, using fallback');
             }
             
             // Save conversation history (using optimized format, user messages don't save audio data)
             this.addOptimizedConversationHistory('user', transcript, null, null, context);
-            this.addOptimizedConversationHistory('assistant', textResponse, null, audioInfo?.id);
+            this.addOptimizedConversationHistory('assistant', assistantTextContent, null, audioInfo?.transcript || assistantTextContent);
+            
+            Logger.log('💾 Saved assistant message with content:', assistantTextContent);
             
             // Output token usage
             if (result.usage) {
@@ -485,7 +526,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             
             return {
                 transcript: transcript,
-                textResponse: textResponse,
+                textResponse: assistantTextContent, // Use the processed text content
                 audioResponse: audioResponse
             };
 
@@ -496,19 +537,13 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
     }
 
     /**
-     * Cache audio data
+     * Cache audio data (deprecated - no longer used to avoid generating audio tokens)
+     * @deprecated Audio caching disabled to reduce token costs
      */
     cacheAudioData(audioInfo) {
-        if (!audioInfo || !audioInfo.id) return;
-        
-        this.audioCache.set(audioInfo.id, {
-            data: audioInfo.data,
-            transcript: audioInfo.transcript,
-            expiresAt: audioInfo.expires_at,
-            cachedAt: Math.floor(Date.now() / 1000)
-        });
-        
-        Logger.log(`💾 Audio cached: ${audioInfo.id} (${this.audioCache.size} audios in cache)`);
+        // No longer cache audio data to avoid generating audio tokens
+        Logger.log(`💾 Audio caching disabled to avoid audio token costs`);
+        return;
     }
 
     /**
@@ -654,12 +689,6 @@ ${context.fullTranscript || 'Loading subtitles...'}
 
 Please provide concise answers (within 30 words) since your response will be converted to speech. Focus on content relevant to the current time position. When asked to repeat what was just said in the video, provide word-by-word accurate repetition without omitting details.`;
 
-        // Dynamic system message (current timestamp and relevant subtitles)
-        const dynamicSystemMessage = `Current video playback time: ${Math.floor(context.currentTime)} seconds
-
-Subtitle content around current time position:
-${context.relevantSubtitles || 'No relevant subtitles'}`;
-
         const messages = [
             {
                 role: 'system',
@@ -667,48 +696,62 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             }
         ];
         
-        // Add conversation history (insert dynamic context before each user input)
+        // Add conversation history (system messages are already stored independently)
         const conversationHistory = this.getCurrentConversationHistory();
         
+        Logger.log('🔍 Building messages from conversation history:', conversationHistory.length, 'items');
+        
         conversationHistory.forEach((msg, index) => {
-            if (msg.role === 'user') {
-                // Insert dynamic system message before user message
+            if (msg.role === 'system' && msg.messageType === 'dynamic_context') {
+                // Dynamic system message (already stored in history)
                 messages.push({
                     role: 'system',
-                    content: msg.dynamicContext || dynamicSystemMessage // Use historical context or current one
+                    content: msg.content
                 });
-                
+                Logger.log(`📍 Added dynamic system message #${index}:`, msg.content.substring(0, 50) + '...');
+            } else if (msg.role === 'user') {
                 // User message: now all are text messages
                 messages.push({
                     role: 'user',
                     content: msg.content
                 });
-            } else {
-                // Assistant reply: use audio ID reference (if available)
-                if (msg.audioId && this.audioCache.has(msg.audioId)) {
-                    Logger.log(`🔄 Referencing assistant audio ID: ${msg.audioId}`);
-                    messages.push({
-                        role: 'assistant',
-                        content: [], // Empty content
-                        audio: {
-                            id: msg.audioId
-                        }
-                    });
-                } else {
-                    // Plain text reply
-                    messages.push({
-                        role: 'assistant',
-                        content: msg.content
-                    });
+                Logger.log(`👤 Added user message #${index}:`, msg.content);
+            } else if (msg.role === 'assistant') {
+                // Assistant reply: use text content only (no audio ID to avoid generating audio tokens)
+                const assistantContent = msg.content || '[Empty assistant response]';
+                messages.push({
+                    role: 'assistant',
+                    content: assistantContent
+                });
+                Logger.log(`🤖 Added assistant message #${index}:`, assistantContent);
+                
+                // Debug: Check if assistant content is empty
+                if (!msg.content || !msg.content.trim()) {
+                    Logger.warn(`⚠️ Assistant message #${index} has empty content! Full message:`, msg);
                 }
             }
         });
         
-        // Insert latest dynamic system message before current user input
-        messages.push({
-            role: 'system',
-            content: dynamicSystemMessage
-        });
+        // Check if we need to add dynamic system message for current user input
+        const currentTime = Math.floor(context.currentTime);
+        const lastUserMessage = [...conversationHistory].reverse().find(msg => msg.role === 'user');
+        const lastTime = lastUserMessage ? lastUserMessage.currentTime : null;
+        
+        if (currentTime !== lastTime) {
+            // Add dynamic system message for current context
+            const dynamicSystemMessage = `Current video playback time: ${currentTime} seconds
+
+Subtitle content around current time position:
+${context.relevantSubtitles || 'No relevant subtitles'}`;
+            
+            messages.push({
+                role: 'system',
+                content: dynamicSystemMessage
+            });
+            Logger.log(`📍 Adding dynamic system message for current time ${currentTime}s`);
+        } else {
+            Logger.log(`⏰ Time unchanged (${currentTime}s), skipping dynamic system message for current input`);
+        }
         
         // Add current user text input
         messages.push({
@@ -718,7 +761,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
         
         Logger.log(`📝 Message array length: ${messages.length}, Conversation history: ${conversationHistory.length}`);
         Logger.log(`💾 Static system message length: ${staticSystemMessage.length} characters (cacheable)`);
-        Logger.log(`🔄 Dynamic system message length: ${dynamicSystemMessage.length} characters`);
+        Logger.log(`⏰ Current time: ${currentTime}s, Last time: ${lastTime}s, Time changed: ${currentTime !== lastTime}`);
         
         return messages;
     }
@@ -991,10 +1034,10 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
             Logger.log(`  🎵 Audio tokens: ${details.audio_tokens || 0}`);
         }
         
-        // Cache efficiency statistics
+        // Conversation statistics
         const summary = this.getConversationSummaryWithAudio();
-        Logger.log(`💾 Assistant audio cache efficiency: ${summary.cacheHitRate} (${summary.cachedAudioReferences}/${summary.assistantAudioMessages})`);
-        Logger.log(`🎤 User audio messages: ${summary.userAudioMessages} (always resent)`);
+        Logger.log(`💬 Assistant text messages: ${summary.assistantTextMessages} (using text only to avoid audio tokens)`);
+        Logger.log(`🎤 User audio messages: ${summary.userAudioMessages} (transcribed to text)`);
         Logger.log('=====================================');
     }
 
@@ -1003,16 +1046,12 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
      */
     getConversationSummaryWithAudio() {
         const history = this.getCurrentConversationHistory();
-        let assistantAudioMessages = 0;
-        let cachedAudioRefs = 0;
+        let assistantTextMessages = 0;
         let userAudioMessages = 0;
         
         history.forEach(msg => {
-            if (msg.role === 'assistant' && msg.audioId) {
-                assistantAudioMessages++;
-                if (this.audioCache.has(msg.audioId)) {
-                    cachedAudioRefs++;
-                }
+            if (msg.role === 'assistant') {
+                assistantTextMessages++;
             } else if (msg.role === 'user' && msg.audioBase64) {
                 userAudioMessages++;
             }
@@ -1021,11 +1060,11 @@ ${context.relevantSubtitles || 'No relevant subtitles'}`;
         return {
             totalMessages: history.length,
             userAudioMessages: userAudioMessages,
-            assistantAudioMessages: assistantAudioMessages,
-            cachedAudioReferences: cachedAudioRefs,
-            cacheHitRate: assistantAudioMessages > 0 ? (cachedAudioRefs / assistantAudioMessages * 100).toFixed(1) + '%' : '0%',
+            assistantTextMessages: assistantTextMessages,
+            cachedAudioReferences: 0, // No longer using audio ID caching
+            cacheHitRate: '0%', // No longer using audio ID caching
             currentVideoId: this.currentVideoId,
-            audioCacheSize: this.audioCache.size
+            audioCacheSize: 0 // No longer using audio cache
         };
     }
 
