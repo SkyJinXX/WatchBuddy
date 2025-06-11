@@ -22,7 +22,7 @@ class YouTubeVoiceAssistant {
         this.isHovering = false; // 鼠标是否悬停
         
         // Configuration options
-        this.contextSentencesBefore = 4; // Number of sentences before current time (configurable)
+        this.contextMaxWords = 28; // Maximum words in subtitle context (configurable)
         
         // Analytics
         this.analytics = new Analytics();
@@ -650,7 +650,13 @@ class YouTubeVoiceAssistant {
 
         } catch (error) {
             Logger.error('Voice query failed:', error);
-            this.updateStatus('Processing failed: ' + error.message, 'error');
+            
+            // Special handling for audioId expiry
+            if (error.message.includes('AudioId expired')) {
+                this.updateStatus('🔄 ' + error.message, 'error');
+            } else {
+                this.updateStatus('Processing failed: ' + error.message, 'error');
+            }
             
             // Track failed voice query
             try {
@@ -910,23 +916,57 @@ class YouTubeVoiceAssistant {
     /**
      * Get current subtitle context from timestamps
      */
-    getCurrentSubtitleContextFromTimestamps(timestamps, currentTime, sentenceCount = null) {
-        // Use configured sentence count or default
-        const targetSentences = sentenceCount || this.contextSentencesBefore;
+    getCurrentSubtitleContextFromTimestamps(timestamps, currentTime, maxWords = null) {
+        // Use configured max words or default
+        const targetMaxWords = maxWords || this.contextMaxWords;
         
         // Find subtitles that are before or at current time
         const beforeOrCurrent = timestamps.filter(entry => entry.start <= currentTime);
         
         // Sort by start time (chronological order)
+        // Q: why do we sort? isn't it already sorted?
         beforeOrCurrent.sort((a, b) => a.start - b.start);
         
-        // Take the last N sentences (most recent before current time)
-        const recentEntries = beforeOrCurrent.slice(-targetSentences);
+        // Build context by adding sentences from most recent backwards until we hit word limit
+        let contextText = '';
+        let wordCount = 0;
+        const usedEntries = [];
         
-        // Concatenate text from recent subtitles
-        const contextText = recentEntries.map(entry => entry.text).join(' ');
+        // Start from the most recent subtitle and work backwards
+        for (let i = beforeOrCurrent.length - 1; i >= 0; i--) {
+            const entry = beforeOrCurrent[i];
+            const entryWords = entry.text.split(/\s+/).filter(word => word.length > 0);
+            
+            // Check if adding this entry would exceed word limit
+            if (wordCount + entryWords.length > targetMaxWords && contextText.length > 0) {
+                // We already have some content and adding this would exceed limit
+                break;
+            }
+            
+            // Add this entry to the beginning of context
+            usedEntries.unshift(entry);
+            wordCount += entryWords.length;
+            
+            // If this is our first entry, just set it
+            if (contextText === '') {
+                contextText = entry.text;
+            } else {
+                // Prepend to existing context
+                contextText = entry.text + ' ' + contextText;
+            }
+            
+            // If we've reached the word limit, stop
+            if (wordCount >= targetMaxWords) {
+                break;
+            }
+        }
         
-        Logger.log(`Content: Found ${recentEntries.length}/${targetSentences} subtitle entries before time ${currentTime}s`);
+        if (usedEntries.length === 0) {
+            Logger.log(`Content: No subtitle entries found before time ${currentTime}s`);
+            return '';
+        }
+        
+        Logger.log(`Content: Found ${usedEntries.length} subtitle entries before time ${currentTime}s (${wordCount}/${targetMaxWords} words)`);
         Logger.log(`Content: Relevant subtitle context: "${contextText}"`);
         
         return contextText;

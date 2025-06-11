@@ -12,7 +12,7 @@ class OpenAIVoiceAssistant {
         this.videoConversations = new Map(); // videoId -> conversation history
         this.currentVideoId = null;
         this.maxHistoryLength = 20; // Maximum 20 conversation records per video
-        this.maxVideoCount = 10; // Maximum cache for 5 videos' conversation history
+        this.maxVideoCount = 10; // Maximum cache for 10 videos' conversation history
 
         // Audio cache no longer needed (using text-only responses to avoid audio tokens)
         this.audioCache = new Map(); // Kept for backward compatibility
@@ -112,12 +112,16 @@ class OpenAIVoiceAssistant {
      * Clean up oldest conversation history (LRU strategy)
      */
     cleanupOldConversations() {
+        // Remove oldest conversation if we have too many videos
         const videoIds = Array.from(this.videoConversations.keys());
-        const oldestVideoId = videoIds[0]; // Map maintains insertion order, first is oldest
-        
-        this.videoConversations.delete(oldestVideoId);
-        Logger.log('OpenAI: Cleaned up oldest conversation history:', oldestVideoId);
+        if (videoIds.length > this.maxVideoCount) {
+            const oldestVideoId = videoIds[0]; // Map maintains insertion order, first is oldest
+            this.videoConversations.delete(oldestVideoId);
+            Logger.log(`OpenAI: Cleaned up oldest conversation history: ${oldestVideoId} (keeping max ${this.maxVideoCount} videos)`);
+        }
     }
+
+
 
     /**
      * Get current video's conversation history
@@ -193,6 +197,7 @@ ${context.relevantSubtitles || 'No relevant subtitles'}
             }
             if (audioId) {
                 historyItem.audioId = audioId;
+                historyItem.audioIdTimestamp = Date.now(); // Track when audioId was created
             }
         }
         
@@ -746,12 +751,22 @@ ${context.fullTranscript || 'Loading subtitles...'}
                 const isLastAssistant = index === lastAssistantIndex;
                 
                 if (isLastAssistant && msg.audioId) {
-                    // Last assistant message: use audio ID to maintain voice output
-                    messages.push({
-                        role: 'assistant',
-                        audio: { id: msg.audioId }
-                    });
-                    Logger.log(`🎵 Added assistant message #${index} with audio ID:`, msg.audioId);
+                    // Check if audioId is expired (50 minutes = 3000000ms)
+                    const audioIdAge = Date.now() - (msg.audioIdTimestamp || 0);
+                    const isAudioIdExpired = audioIdAge > 3000000; // 50 minutes
+                    
+                    if (isAudioIdExpired) {
+                        // AudioId expired, throw error to suggest page refresh
+                        const ageMinutes = Math.round(audioIdAge/60000);
+                        throw new Error(`AudioId expired (${ageMinutes} minutes old). Please refresh the page to start a new conversation.`);
+                    } else {
+                        // AudioId still valid, use it to maintain voice output
+                        messages.push({
+                            role: 'assistant',
+                            audio: { id: msg.audioId }
+                        });
+                        Logger.log(`🎵 Added assistant message #${index} with audio ID (${Math.round(audioIdAge/60000)}min old):`, msg.audioId);
+                    }
                 } else {
                     // Previous assistant messages: use text content only
                     const assistantContent = msg.audioTranscript || msg.content || '[Empty assistant response]';
