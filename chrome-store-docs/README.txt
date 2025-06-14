@@ -1,5 +1,5 @@
 CHROME STORE DOCUMENTATION INDEX
-YouTube Watching Assistant v0.5.4
+YouTube Watching Assistant v0.5.5
 
 ================================================================================
 DOCUMENT OVERVIEW
@@ -52,7 +52,7 @@ All documents incorporate Google's requirements analysis covering:
 VERSION HISTORY
 ================================================================================
 
-v0.5.4 - Initial documentation package
+v0.5.5 - Initial documentation package
 - Comprehensive permission justifications
 - Single purpose compliance analysis
 - Detailed data usage documentation
