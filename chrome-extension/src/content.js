@@ -269,7 +269,9 @@ class YouTubeVoiceAssistant {
     }
 
     isVideoPage() {
-        return window.location.pathname === '/watch' && window.location.search.includes('v=');
+        // Support both regular videos and Shorts
+        return (window.location.pathname === '/watch' && window.location.search.includes('v=')) ||
+               window.location.pathname.startsWith('/shorts/');
     }
 
     async getApiKey() {
@@ -736,38 +738,79 @@ class YouTubeVoiceAssistant {
     }
 
     getCurrentVideoId() {
+        // For regular YouTube videos: /watch?v=VIDEO_ID
         const urlParams = new URLSearchParams(window.location.search);
-        const videoId = urlParams.get('v');
+        const videoIdFromQuery = urlParams.get('v');
+        
+        // For YouTube Shorts: /shorts/VIDEO_ID
+        const shortsMatch = window.location.pathname.match(/^\/shorts\/([a-zA-Z0-9_-]+)/);
+        const videoIdFromPath = shortsMatch ? shortsMatch[1] : null;
+        
+        const videoId = videoIdFromQuery || videoIdFromPath;
         Logger.log('Content: getCurrentVideoId extracted:', videoId, 'from URL:', window.location.href);
         return videoId;
     }
 
     getVideoTitle() {
-        const titleElement = document.querySelector('h1.ytd-watch-metadata yt-formatted-string');
-        return titleElement ? titleElement.textContent.trim() : 'Unknown Video';
+        // Try regular video title selector first
+        let titleElement = document.querySelector('h1.ytd-watch-metadata yt-formatted-string');
+        
+        // For Shorts, title might not be easily accessible, so we'll try a few selectors but don't force it
+        if (!titleElement && window.location.pathname.startsWith('/shorts/')) {
+            const shortsSelectors = [
+                'yt-shorts-video-title-view-model span',
+                '#shorts-player h2 span',
+                '.ytd-reel-video-renderer h2 span'
+            ];
+            
+            for (const selector of shortsSelectors) {
+                titleElement = document.querySelector(selector);
+                if (titleElement && titleElement.textContent.trim()) {
+                    Logger.log('Content: Found Shorts title with selector:', selector);
+                    break;
+                }
+            }
+        }
+        
+        const title = titleElement ? titleElement.textContent.trim() : 'YouTube Video';
+        Logger.log('Content: Video title extracted:', title);
+        return title;
     }
 
     getVideoDescription() {
         try {
-            // Target the specific #snippet elements that contain full description content
-            const snippetSelectors = [
-                // Path 1: Full description in expandable section
+            let description = '';
+            
+            // For YouTube Shorts - use the specific selector provided by user
+            if (window.location.pathname.startsWith('/shorts/')) {
+                const shortsDescSelector = 'yt-shorts-video-title-view-model.ytShortsVideoTitleViewModelHost.ytShortsVideoTitleViewModelHostClickable';
+                const shortsElement = document.querySelector(shortsDescSelector);
+                if (shortsElement) {
+                    description = shortsElement.textContent.trim();
+                    if (description) {
+                        Logger.log('Content: Shorts description extracted with selector:', shortsDescSelector);
+                        Logger.log('Content: Description preview:', description.substring(0, 200) + '...');
+                        return description;
+                    }
+                }
+            }
+            
+            // For regular YouTube videos - use existing selectors
+            const regularVideoSelectors = [
                 'ytd-structured-description-content-renderer ytd-expandable-video-description-body-renderer ytd-text-inline-expander #snippet',
-                // Path 2: Full description in watch metadata
                 'ytd-watch-metadata ytd-text-inline-expander #snippet',
-                // Fallback: any snippet in description area
                 'ytd-expandable-video-description-body-renderer #snippet',
                 'ytd-text-inline-expander #snippet',
                 '#snippet'
             ];
             
-            for (const selector of snippetSelectors) {
-                const snippetElement = document.querySelector(selector);
-                if (snippetElement) {
-                    // Get all text content from the snippet element and its children using TreeWalker
+            for (const selector of regularVideoSelectors) {
+                const element = document.querySelector(selector);
+                if (element) {
+                    // Get all text content from the element and its children using TreeWalker
                     const allTextNodes = [];
                     const walker = document.createTreeWalker(
-                        snippetElement,
+                        element,
                         NodeFilter.SHOW_TEXT,
                         null,
                         false
@@ -781,7 +824,7 @@ class YouTubeVoiceAssistant {
                         }
                     }
                     
-                    const description = allTextNodes.join(' ').trim();
+                    description = allTextNodes.join(' ').trim();
                     if (description) {
                         Logger.log('Content: Video description extracted with selector:', selector);
                         Logger.log('Content: Description preview:', description.substring(0, 200) + '...');
@@ -790,7 +833,7 @@ class YouTubeVoiceAssistant {
                 }
             }
             
-            Logger.log('Content: No video description snippet found');
+            Logger.log('Content: No video description found');
             return 'No description available';
         } catch (error) {
             Logger.warn('Content: Error extracting video description:', error);

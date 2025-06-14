@@ -161,7 +161,7 @@ async function savePrivacySettings() {
         // Notify content script about analytics setting change
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (tab && tab.url && tab.url.includes('youtube.com/watch')) {
+            if (tab && isYouTubeVideoPage(tab.url)) {
                 await chrome.tabs.sendMessage(tab.id, {
                     action: 'analytics_setting_changed',
                     enabled: analyticsEnabled
@@ -254,7 +254,7 @@ async function saveApiKey() {
 async function notifyContentScript() {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tab && tab.url && tab.url.includes('youtube.com/watch')) {
+        if (tab && isYouTubeVideoPage(tab.url)) {
             chrome.tabs.sendMessage(tab.id, { 
                 action: 'reload_assistant',
                 source: 'popup'
@@ -271,16 +271,15 @@ async function notifyContentScript() {
 async function loadSubtitleStatus() {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab || !tab.url || !tab.url.includes('youtube.com/watch')) {
+        if (!tab || !isYouTubeVideoPage(tab.url)) {
             return;
         }
 
         // Show subtitle management section
         document.getElementById('subtitleSection').style.display = 'block';
 
-        // Get current video ID
-        const urlParams = new URLSearchParams(tab.url.split('?')[1]);
-        const videoId = urlParams.get('v');
+        // Get current video ID (support both regular videos and Shorts)
+        let videoId = extractVideoId(tab.url);
         
         if (videoId) {
             // Update downsub link
@@ -332,7 +331,7 @@ function updateSubtitleStatus(message, type) {
  */
 function updateDownsubLink(youtubeUrl) {
     const downsubLink = document.getElementById('downsubLink');
-    if (downsubLink && youtubeUrl && youtubeUrl.includes('youtube.com/watch')) {
+    if (downsubLink && youtubeUrl && isYouTubeVideoPage(youtubeUrl)) {
         // Encode YouTube URL
         const encodedUrl = encodeURIComponent(youtubeUrl);
         // Generate downsub link
@@ -368,13 +367,13 @@ async function handleFileUpload(file) {
 async function saveSubtitleContent(subtitleContent) {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab || !tab.url || !tab.url.includes('youtube.com/watch')) {
+        if (!tab || !isYouTubeVideoPage(tab.url)) {
             showStatus('Please use this function on a YouTube video page', 'error');
             return;
         }
 
-        const urlParams = new URLSearchParams(tab.url.split('?')[1]);
-        const videoId = urlParams.get('v');
+        // Get video ID (support both regular videos and Shorts)
+        let videoId = extractVideoId(tab.url);
 
         if (!videoId) {
             showStatus('Unable to get video ID', 'error');
@@ -431,12 +430,12 @@ async function clearSubtitle() {
 
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab || !tab.url || !tab.url.includes('youtube.com/watch')) {
+        if (!tab || !isYouTubeVideoPage(tab.url)) {
             return;
         }
 
-        const urlParams = new URLSearchParams(tab.url.split('?')[1]);
-        const videoId = urlParams.get('v');
+        // Get video ID (support both regular videos and Shorts)
+        let videoId = extractVideoId(tab.url);
 
         if (videoId) {
             // Remove manual subtitles and API subtitle cache from storage
@@ -482,7 +481,7 @@ async function checkCurrentPage() {
         const pageUrl = document.getElementById('currentPageUrl');
         
         if (tab && tab.url) {
-            if (tab.url.includes('youtube.com/watch')) {
+            if (tab.url.includes('youtube.com/watch') || tab.url.includes('youtube.com/shorts/')) {
                 pageStatus.style.display = 'block';
                 pageUrl.textContent = '✅ YouTube Video Page - Watching Assistant Available';
                 pageUrl.style.color = '#155724';
@@ -572,7 +571,29 @@ function togglePassword() {
     }
 }
 
+/**
+ * Check if URL is a YouTube video page (regular video or Shorts)
+ */
+function isYouTubeVideoPage(url) {
+    return url && (url.includes('youtube.com/watch') || url.includes('youtube.com/shorts/'));
+}
 
+/**
+ * Extract video ID from YouTube URL (supports both regular videos and Shorts)
+ */
+function extractVideoId(url) {
+    if (!url) return null;
+    
+    if (url.includes('/watch')) {
+        const urlParams = new URLSearchParams(url.split('?')[1]);
+        return urlParams.get('v');
+    } else if (url.includes('/shorts/')) {
+        const shortsMatch = url.match(/\/shorts\/([a-zA-Z0-9_-]+)/);
+        return shortsMatch ? shortsMatch[1] : null;
+    }
+    
+    return null;
+}
 
 /**
  * Bind event listeners

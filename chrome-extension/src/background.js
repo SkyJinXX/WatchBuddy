@@ -190,10 +190,10 @@ async function checkPermissions(sendResponse) {
 
 // 监听标签页更新，用于检测YouTube页面
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    // 只处理完成加载的YouTube视频页面
+    // 只处理完成加载的YouTube视频页面（包括Shorts）
     if (changeInfo.status === 'complete' && 
         tab.url && 
-        tab.url.includes('youtube.com/watch')) {
+        (tab.url.includes('youtube.com/watch') || tab.url.includes('youtube.com/shorts/'))) {
         
         console.log('检测到YouTube视频页面:', tab.url);
         
@@ -209,8 +209,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // 监听扩展按钮点击
 chrome.action.onClicked.addListener((tab) => {
-    // 如果是YouTube视频页面，可以直接激活语音助手
-    if (tab.url && tab.url.includes('youtube.com/watch')) {
+    // 如果是YouTube视频页面（包括Shorts），可以直接激活语音助手
+    if (tab.url && (tab.url.includes('youtube.com/watch') || tab.url.includes('youtube.com/shorts/'))) {
         chrome.tabs.sendMessage(tab.id, {
             action: 'activate_voice_assistant'
         }).catch(() => {
@@ -282,7 +282,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 async function notifyAllYouTubeTabs() {
     try {
         const tabs = await chrome.tabs.query({
-            url: ['*://www.youtube.com/watch*', '*://youtube.com/watch*']
+            url: ['*://www.youtube.com/watch*', '*://youtube.com/watch*', '*://www.youtube.com/shorts/*', '*://youtube.com/shorts/*']
         });
         
         tabs.forEach(tab => {

@@ -158,7 +158,7 @@ class OpenAIVoiceAssistant {
                     role: 'system',
                     content: `Current video playback time: ${currentTime} seconds
 
-Subtitle content around current time position:
+Subtitle content before current time position:
 ${context.relevantSubtitles || 'No relevant subtitles'}
 `,
                     timestamp: Date.now(),
@@ -793,7 +793,7 @@ ${context.fullTranscript || 'Loading subtitles...'}
             // Add dynamic system message for current context
             const dynamicSystemMessage = `Current video playback time: ${currentTime} seconds
 
-Subtitle content around current time position:
+Subtitle content before current time position:
 ${context.relevantSubtitles || 'No relevant subtitles'}`;
             
             messages.push({
