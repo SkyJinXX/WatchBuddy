@@ -39,10 +39,10 @@
 
 ### 📥 Installation
 
-#### Option 1: Chrome Web Store *(Coming Soon)*
-*Currently under review - will be available soon!*
+#### Option 1: Chrome Web Store
+1. **Install from Chrome Web Store**: [WatchBuddy - YouTube Watching Assistant](https://chromewebstore.google.com/detail/watchbuddy-youtube-watchi/laefkmcckcedcjmogdlolonjccejkcjj?authuser=0&hl=en)
 
-#### Option 2: Manual Installation *(Available Now)*
+#### Option 2: Manual Installation
 1. **Download**: Get the [latest release](https://github.com/skyjinxx/WatchBuddy/releases) ZIP file
 2. **Extract**: Unzip the downloaded file to a folder
 3. **Install**: 
