@@ -1,13 +1,8 @@
 ---
-description: 
-globs: 
-alwaysApply: true
+description:
+globs:
+alwaysApply: false
 ---
-# WatchBuddy Chrome Extension - Comprehensive Codebase Documentation
-
-## Project Overview
-WatchBuddy is an intelligent Chrome extension that provides AI-powered voice interaction for YouTube videos. [Users can ask questions about video content using voice input and receive intelligent responses based on the video's subtitles][[memory:4708356964196961831]]. The extension supports both automatic subtitle extraction and manual subtitle upload as a fallback mechanism.
-
 # WatchBuddy Chrome Extension - Comprehensive Codebase Documentation
 
 ## Project Overview
@@ -460,3 +455,4 @@ Logger.warn('Warning message');
 - Debounced position saving for floating button
 - Lazy loading of heavy libraries (VAD, ONNX Runtime)
 
+This comprehensive documentation covers the entire WatchBuddy codebase structure, providing detailed information about each file's purpose, classes, functions, and key variables for effective development and maintenance.
